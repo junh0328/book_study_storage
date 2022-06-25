@@ -81,14 +81,20 @@ function usd(aNumber) {
   }).format(aNumber / 100); // 단위 변환 로직도 이 함수 안으로 이동
 }
 
+function totalVolumeCredits(invoice) {
+  let volumeCredits = 0;
+  for (let perf of invoice.performances) {
+    volumeCredits += volumeCreditsFor(perf);
+  }
+  return volumeCredits;
+}
+
 function statement(invoice, plays) {
   let totalAmount = 0;
-  let volumeCredits = 0;
+
   let result = `청구내역 (고객명: ${invoice.customer})\n`;
 
   for (let perf of invoice.performances) {
-    volumeCredits += volumeCreditsFor(perf);
-
     // 청구 내역을 출력한다.
     result += `${playFor(perf).name}: ${usd(amountFor(perf))} (${
       perf.audience
@@ -97,7 +103,7 @@ function statement(invoice, plays) {
   }
 
   result += `총액: ${usd(totalAmount)}\n`;
-  result += `적립 포인트: ${volumeCredits}점\n`;
+  result += `적립 포인트: ${totalVolumeCredits(invoice)}점\n`;
   return result;
 }
 
