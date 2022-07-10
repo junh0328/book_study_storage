@@ -1,0 +1,20 @@
+{
+  "name": "chapter4",
+  "version": "1.0.0",
+  "description": "",
+  "main": "asia.js",
+  "scripts": {
+    "test": "mocha --require @babel/register",
+    "test_recursive": "mocha --recursive --require @babel/register './test/**/*.js'"
+  },
+  "author": "junhee lee",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.18.6",
+    "@babel/core": "^7.18.6",
+    "@babel/preset-env": "^7.18.6",
+    "@babel/register": "^7.18.6",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0"
+  }
+}
