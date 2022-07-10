@@ -9,6 +9,7 @@
 - [1. 리팩터링 첫 번째 예시](#1-리팩터링-첫-번째-예시)
 - [2. 리팩터링 원칙](#2-리팩터링-원칙)
 - [3. 코드에서 나는 악취](#3-코드에서-나는-악취)
+- [4. 테스트 구축하기](#4-테스트-구축하기)
 
 ## 1. 리팩터링 첫 번째 예시
 
@@ -318,3 +319,393 @@ p.26 예시 프로그램을 본 수감
 - 특정 코드 블록이 하는 일에 주석을 남기고 싶다면 **함수 추출하기**를 적용해 본다
 - 이미 추출되어 있는 함수임에도 여전히 설명이 필요하다면 **함수 선언 바꾸기**로 함수 이름을 바꿔본다
 - 주석을 남겨야 겠다는 생각이 들면, 가장 먼저 주석이 필요없는 코드로 리팩터링해본다
+
+## 4. 테스트 구축하기
+
+리팩터링을 제대로 하려면 **불가피하게 저지르는 실수를 잡아주는 견고한 테스트 스위트(test suite)가 뒷받침돼야 한다**. 자동 리팩터링 도구를 활용하더라도 이 책에서 소개하는 리팩터링 중 다수는 테스트 스위트로 재차 검증할 것이다
+
+### 4.1 자가 테스트 코드의 가치
+
+- 프로그래머들이 어떻게 일하는지 살펴보면 실제로 코드를 작성하는 시간의 비중은 그리 크지 않음을 알 수 있다. 현재 상황을 파악하기도 하고, 설계를 고민하기도 한다. 물론 대부분의 시간은 디버깅에 쓴다
+- 버그 수정 자체는 대체로 금방 끝난다. 진짜 끔직한 건 버그를 찾는 여정이다. 또한 버그를 잡는 과정에서 다른 버그를 심기도 하는데, 그 사실을 한참이 지나서야 알아채기도 한다
+- 모든 테스트를 완전히 자동화하고 그 결과까지 스스로 검사하게 만들자
+- 테스트를 작성하기 가장 좋은 시점은 프로그래밍을 시작하기 전이다. 나는 기능을 추가해야 할 때 테스트부터 작성한다. 얼핏 순서가 뒤바뀐 듯 들리지만, 전혀 그렇지 않다. 테스트를 작성하다 보면 원하는 기능을 추가하기 위해 무엇이 필요한지 고민하게 된다. 구현보다 인터페이스에 집중하게 된다는 장점도 있다. 게다가 코딩이 완료되는 시점을 정확하게 판단할 수 있다. 테스트를 모두 통과한 시점이 바로 코드를 완성한 시점이다
+- 이처럼 테스트부터 작성하는 습관을 바탕으로 테스트 주도 개발(TDD, Test-Driven Development)이란 기법이 창시됐다. TDD에서는 (처음에는 통과하지 못할) 테스트를 작성하고, 이 테스트를 통과하게끔 코드를 작성하고, 결과 코드를 최대한 깔끔하게 리팩터링하는 과정을 짧은 주기로 반복한다
+- 자바스크립트 프로그램용으로 테스트 코드를 작성하는 방법을 소개한다. 코드를 테스트하기 위해서는 테스트 프레임워크를 마련해야 한다. 여기서는 현재 널리 쓰이고 나름 좋다고 알려진 [모카](https://mochajs.org/) (Mocha)를 사용한다
+
+### Mocha Test 시에 import, export 사용하기
+
+- [https://stackoverflow.com/questions/60227314/how-to-test-es6-modules-these-with-import-with-mocha/69386358#69386358](https://stackoverflow.com/questions/60227314/how-to-test-es6-modules-these-with-import-with-mocha/69386358#69386358)
+  ### 개요
+  ### 1. babel 관련 패키지 설치
+  ```
+  yarn add @babel/cli @babel/core @babel/preset-env @babel/register --dev
+  ```
+  - @babel/cli : [링크](https://babeljs.io/docs/en/babel-cli)
+    - 명령줄에서 파일을 컴파일하는 데 사용할 수 있는 CLI
+  - @babel/core : [링크](https://babeljs.io/docs/en/babel-core)
+    - babel에서 사용하는 core lib입니다
+  - @babel/preset-env : [링크](https://babeljs.io/docs/en/babel-preset-env)
+    - 환경에 필요한 구문 변환을 우리가 관리할 필요 없이 최신 JS를 사용할 수 있게 해줍니다.
+  ### babel 구성
+  - .babelrc를 프로젝트 root 위치에 생성 후 아래 내용을 추가해주세요
+  ```
+  {
+  	"presets" : ["@babel/preset-env"]
+  }
+  ```
+  ### package.json
+  - package.json의 스크립트에서 mocha에 --require 옵션을 통해 해당 모듈을 사용한다고 적어줍니다
+  ```json
+  {
+    "name": "chapter4",
+    "version": "1.0.0",
+    "description": "",
+    "main": "asia.js",
+    "scripts": {
+      "test": "mocha --require @babel/register",
+      "test_recursive": "mocha --recursive --require @babel/register './test/**/*.js'"
+    },
+    "author": "junhee lee",
+    "license": "ISC",
+    "devDependencies": {
+      "@babel/cli": "^7.18.6",
+      "@babel/core": "^7.18.6",
+      "@babel/preset-env": "^7.18.6",
+      "@babel/register": "^7.18.6",
+      "chai": "^4.3.6",
+      "mocha": "^10.0.0"
+    }
+  }
+  ```
+
+<details>
+
+<summary>성공</summary>
+
+<img src="./images/4_success.PNG" alt="success image" width=600/>
+</details>
+
+<details>
+
+<summary>실패</summary>
+
+<img src="./images/4_failure.PNG" alt="success image" width=600/>
+</details>
+
+<details>
+
+<summary>전체 테스트 코드</summary>
+
+폴더 구조에 따라 상대경로로 달라질 수 있기 때문에, 제가 구성한 폴더 구조를 첨부해두겠습니다
+
+- 나의 폴더 구조
+
+<img src="./images/4_folder.PNG" alt="success image" width=400/>
+
+```jsx
+const { expect } = require("chai");
+const { Province, sampleProvinceData } = require("../sample");
+
+describe("province", function () {
+  let asia;
+  this.beforeEach(function () {
+    asia = new Province(sampleProvinceData());
+  });
+  it("shortfall", function () {
+    // expect(asia.shortfall, 5);
+    expect(asia.shortfall).equal(5);
+  });
+
+  it("profit", function () {
+    expect(asia.profit).equal(230);
+  });
+
+  it("change production", function () {
+    asia.producers[0].production = 20;
+    expect(asia.shortfall).equal(-6);
+    expect(asia.profit).equal(292);
+  });
+
+  it("zero demand", function () {
+    // 수요가 없다
+    asia.demand = 0;
+    expect(asia.shortfall).equal(-25);
+    expect(asia.profit).equal(0);
+  });
+
+  it("negative demand", () => {
+    // 수요가 마이너스
+    asia.demand = -1;
+    expect(asia.shortfall).equal(-26);
+    expect(asia.profit).equal(-10);
+  });
+
+  it("empty string demand", () => {
+    // 수요 입력란이 비어있을 때 - UI 로부터 문자열을 취하고 있을 때, 필드가 비어 있을 수 있음
+    asia.demand = "";
+    expect(asia.shortfall).NaN;
+    expect(asia.profit).NaN;
+  });
+});
+
+describe("no producers", function () {
+  // 생산자가 없다.
+  let noProducers;
+  this.beforeEach(function () {
+    const data = {
+      name: "No producers",
+      producers: [],
+      demand: 30,
+      price: 20,
+    };
+    noProducers = new Province(data);
+  });
+
+  it("shortfall", function () {
+    expect(noProducers.shortfall).equal(30);
+  });
+
+  it("profit", function () {
+    expect(noProducers.profit).equal(0);
+  });
+});
+
+describe("string for producers", () => {
+  it("", () => {
+    const data = {
+      name: "String producers",
+      producers: "",
+      demand: 30,
+      price: 20,
+    };
+    const prov = new Province(data);
+    expect(prov.shortfall).equal(0);
+  });
+});
+```
+
+</details>
+
+### 4.3 첫 번째 테스트
+
+<details>
+<summary>테스트할 샘플 코드</summary>
+
+```jsx
+function sampleProvinceData() {
+  return {
+    name: "Asia",
+    producers: [
+      { name: "Byzantium", cost: 10, production: 9 },
+      { name: "Attalia", cost: 12, production: 10 },
+      { name: "Sinope", cost: 10, production: 6 },
+    ],
+    demand: 30,
+    price: 20,
+  };
+}
+
+/**
+ * 지역 전체를 나타내는 클래스
+ * 다양한 데이터에 대한 접근자들이 담겨 있다
+ * */
+class Province {
+  constructor(doc) {
+    this._name = doc.name;
+    this._producers = [];
+    this._totalProduction = 0;
+    this._demand = doc.demand;
+    this._price = doc.price;
+    doc.producers.forEach((d) => this.addProducer(new Producer(this, d)));
+  }
+
+  addProducer(arg) {
+    this._producers.push(arg);
+    this._totalProduction += arg.production;
+  }
+
+  get name() {
+    return this._name;
+  }
+  get producers() {
+    return this._producers.slice();
+  }
+  get totalProduction() {
+    return this._totalProduction;
+  }
+  set totalProduction(arg) {
+    this._totalProduction = arg;
+  }
+  get demand() {
+    return this._demand;
+  }
+  set demand(arg) {
+    this._demand = parseInt(arg);
+  } // 숫자로 파싱해 저장
+  get price() {
+    return this._price;
+  }
+  set price(arg) {
+    this._price = parseInt(arg);
+  } // 숫자로 파싱해 저장
+
+  // 생상 부족분을 계산하는 코드
+  get shortfall() {
+    return this._demand - this.totalProduction;
+  }
+
+  // 수익을 계산하는 코드
+  get profit() {
+    return this.demandValue - this.demandCost;
+  }
+
+  get demandValue() {
+    return this.satisfiedDemand * this.price;
+  }
+
+  get satisfiedDemand() {
+    return Math.min(this._demand, this.totalProduction);
+  }
+
+  get demandCost() {
+    let remainingDemand = this.demand;
+    let result = 0;
+    this.producers
+      .sort((a, b) => a.cost - b.cost)
+      .forEach((p) => {
+        const contribution = Math.min(remainingDemand, p.production);
+        remainingDemand -= contribution;
+        result += contribution * p.cost;
+      });
+    return result;
+  }
+}
+
+/**
+ * 생산자를 나타내는 클래스
+ * 단순한 데이터 저장소로 쓰인다
+ *   */
+class Producer {
+  constructor(aProvince, data) {
+    this._province = aProvince;
+    this._cost = data.cost;
+    this._name = data.name;
+    this._production = data.production || 0;
+  }
+
+  get name() {
+    return this._name;
+  }
+
+  get cost() {
+    return this._cost;
+  }
+
+  set cost(arg) {
+    this._cost = parseInt(arg);
+  }
+
+  get production() {
+    return this._production;
+  }
+
+  set production(amountStr) {
+    const amount = parseInt(amountStr);
+    const newProduction = Number.isNaN(amount) ? 0 : amount;
+    this._province.totalProduction += newProduction - this._production;
+    this._production = newProduction;
+  }
+}
+
+module.exports = {
+  sampleProvinceData,
+  Province,
+};
+```
+
+</details>
+
+```jsx
+describe("province", function () {
+  it("shortfall", function () {
+    const asia = new Province(sampleProvinceData()); // 1. 픽스처 설정
+    assert.equal(asia.shortfall, 5); // 2. 검증
+  });
+});
+```
+
+- 첫 번째 단계에서는 테스트에 필요한 데이터와 객체를 뜻하는 픽스처(고정장치)를 설정한다
+- 두 번째 단계에서는 이 픽스쳐의 속성들을 검증하는데, 여기서는 주어진 초깃값에 기초하여 생산 부족분을 정확히 계산했는지 확인한다
+
+- 실패해야 할 상황에서는 반드시 실패하게 만들자
+
+```jsx
+get shortfall(){
+	return this._demand - this.totalProduction * 2; // 오류 주입
+}
+```
+
+- 수정 후 테스트를 다시 실행하면 에러가 발생한다
+- 모카 프레임워크는 소위 어서션(assertion: 단언, 확언) 라이브러리라고 하는 픽스처 검증 라이브러리를 선택해 사용할 수 있다. 현재 자바스크립트용 어서션 라이브러리는 엄청나게 많다. 이 책에서는 차이(Chai) 라이브러리를 사용했다
+- 위에 적은 전체 테스트 코드에서 차이 라이브러리를 통해 esm 에서 어떻게 사용했는지 살펴보고 적용해보자!
+
+### 4.5 픽스처 수정하기
+
+- 테스트에 관해 공부했다면 지금 테스트가 어떻게 돌아가고 있는지 예측이 가능할 것이다
+- 우리가 ‘**설정**’한 표준 픽스처를 취해서, 테스트를 ‘**수행**’하고, 이 픽스처가 일을 기대한 대로 처리했는지를 ‘**검증**’한다
+- 이를 설정-실행-검증 / 조건-발생-결과 / 준비-수행-단언 등으로 부른다
+
+### 4.6 경계 조건 검사하기
+
+- 지금까지 작성한 테스트는 모든 일이 순조롭고 사용자도 의도대로 사용하는 일명, ‘꽃길’ 상황에 집중하였다
+- 하지만 이 범위를 벗어나는 경계 지점에서 문제가 생기면 어떤 일이 벌어지는지 확인하는 테스트도 함께 작성하면 좋다 (컬렉션이 비어있거나, 음수일 때 등을 판단하는 것을 말한다)
+
+```jsx
+describe("no producers", function () {
+  // 생산자가 없다.
+  let noProducers;
+  this.beforeEach(function () {
+    const data = {
+      name: "No producers",
+      producers: [],
+      demand: 30,
+      price: 20,
+    };
+    noProducers = new Province(data);
+  });
+
+  it("shortfall", function () {
+    expect(noProducers.shortfall).equal(30);
+  });
+
+  it("profit", function () {
+    expect(noProducers.profit).equal(0);
+  });
+});
+
+describe("string for producers", () => {
+  it("", () => {
+    const data = {
+      name: "String producers",
+      producers: "",
+      demand: 30,
+      price: 20,
+    };
+    const prov = new Province(data);
+    expect(prov.shortfall).equal(0);
+  });
+});
+```
+
+- 여기서 한 가지 의문이 들 수 있다. 수요가 음수일 때 수익이 음수가 나온다는 것이 이 프로그램을 사용하는 고객 관점에서 말이 되지 않기 때문이다
+- 문제가 생길 가능성이 있는 경계 조건을 생각해보고 그 부분을 집중적으로 테스트하자
+- 모든 버그를 잡아낼 수 없다고 생각하여 테스트를 작성하지 않는다면 대다수의 버그를 잡을 수 있는 기회를 날리는 셈이다
+- 그렇다면 테스트를 어느 수준까지 해야 할까? 테스트는 위험한 부분에 집중하는 것이 좋다
+- 코드에서 처리 과정이 복잡한 부분을 찾아보자. 함수에서 오류가 생길만한 부분을 찾아보자. 테스트가 모든 버그를 걸러주지는 못할지라도, 안심하고 리팩터링할 수 있는 보호막은 되어준다. 리팩터링을 하면서 프로그램을 더욱 깊게 이해하게 되어 더 많은 버그를 찾게 된다
+- 필자는 항상 테스트 스위트부터 갖춘 뒤에 리팩터링하지만, 리팩터링하는 동안에도 계속해서 테스트를 추가한다
+
+### 4.7 끝나지 않은 여정
+
+- **테스트는 매우 중요하다. 리팩터링에 반드시 필요한 토대일 뿐 만 아니라, 그 자체로도 프로그래밍에 중요한 역할을 한다**
+- 이 장에서 보여준 테스트는 단위 테스트(unit test)에 해당한다. 단위 테스트란 코드의 작은 영역만을 대상으로 빠르게 실행되도록 설계된 테스트다. **단위 테스트는 자가 테스트 코드의 핵심이자, 자가 테스트 시스템은 대부분 단위 테스트가 차지한다**
