@@ -10,6 +10,7 @@
 - [2. 리팩터링 원칙](#2-리팩터링-원칙)
 - [3. 코드에서 나는 악취](#3-코드에서-나는-악취)
 - [4. 테스트 구축하기](#4-테스트-구축하기)
+- [6. 기본적인 리팩터링](#6-기본적인-리팩터링)
 
 ## 1. 리팩터링 첫 번째 예시
 
@@ -709,3 +710,214 @@ describe("string for producers", () => {
 
 - **테스트는 매우 중요하다. 리팩터링에 반드시 필요한 토대일 뿐 만 아니라, 그 자체로도 프로그래밍에 중요한 역할을 한다**
 - 이 장에서 보여준 테스트는 단위 테스트(unit test)에 해당한다. 단위 테스트란 코드의 작은 영역만을 대상으로 빠르게 실행되도록 설계된 테스트다. **단위 테스트는 자가 테스트 코드의 핵심이자, 자가 테스트 시스템은 대부분 단위 테스트가 차지한다**
+
+## 6. 기본적인 리팩터링
+
+- 가장 많이 사용하는 리팩터링은 **함수 추출하기**와 **변수 추출하기**다
+- 리팩터링은 본래 코드를 변경하는 작업인 만큼, 이 두 리팩터링을 반대로 진행하는 **함수 인라인하기**와 **변수 인라인하기**도 자주 사용한다
+- **함수 선언 바꾸기**는 함수의 이름을 변경할 때 많이 쓰인다
+- 바꿀 대상이 변수라면 **변수 이름 바꾸기**를 사용하는데, 이는 **변수 캡슐화하기**와 관련이 깊다
+- 자주 함께 뭉쳐 다니는 인수들은 **매개변수 객체 만들기**를 적용해 객체 하나로 묶으면 편리할 때 가 많다
+
+- 함수 구성과 이름 짓기는 가장 기본적인 저수준 리팩터링이다. 그런데 일단 함수를 만들고 나면 다시 고수준 모듈로 묶어야 한다
+- 이렇게 함수를 그룹으로 묶을 때는 **여러 함수를 클래스**로 묶기를 이용한다
+- 또 다른 방법으로 **여러 함수를 변환 함수로 묶기**도 있는데, 읽기전용 데이터를 다룰 때 특히 좋다
+- 한 걸음 더 나아가, 한데 묶은 모듈들의 작업 처리 과정을 명확한 단계로 구분 짓는 **단계 쪼개기**를 적용할 때도 많다
+
+### 6.1 함수 추출하기
+
+**배경**
+
+코드를 언제 독립된 함수로 묶어야 할지에 관한 의견은 수없이 많다. 먼저 길이를 기준으로 삼을 수 있다. 가령 함수 하나가 한 화면을 넘어가면 안 된다는 규칙을 떠올릴 수 있다. 재사용성을 기준으로 할 수도 있다. 두 번 이상 사용될 코드는 함수로 만들고, 한 번만 쓰이는 코드는 인라인 상태로 놔두는 것이다.
+
+하지만 내눈에는 '목적의 구현을 분리'하는 방식이 가장 합리적인 기준으로 보인다. 코드를 보고 무슨 일을 하는지 파악하는데 한참이 걸린다면 그 부분을 함수로 추출한 뒤 '무슨 일'에 걸맞는 이름을 짓는다. 이렇게 해두면 나중에 코드를 다시 읽을 때 함수의 목적이 눈에 확 들어오고, 본문 코드에 대해서는 더 이상 신경 쓸 일이 거의 없다.
+
+함수를 짧게 만들면 함수 호출이 많아져서 성능이 느려질까 걱정하는 사람들도 있다. 필자가 젊던 시절에는 간혹 문제가 되긴 했지만 요즘은 그럴 일이 거의 없다. 함수가 짧으면 캐싱하기가 더 쉽기 때문에 컴파일러가 최적화하는 데 유리할 때가 많다. 성능 최적화에 대해서는 항상 일반 지침을 따르도록 하자
+
+```
+"최적화 할 때는 다음 두 규칙을 따르기 바란다."
+"첫 번째, 하지 마라."
+"두 번째(전문가 한정), 아직 하지 마라"
+```
+
+**절차**
+
+1. 함수를 새로 만들고 목적을 잘 드러내는 이름을 붙인다('어떻게'가 아닌 '무엇을'하는지가 드러나야 한다)
+2. 추출할 코드를 원본 함수에서 복사하여 새 함수에 붙여넣는다
+3. 추출한 코드 중 원본 함수의 지역 변수를 참조하거나 추출한 함수의 유효범위를 벗어나는 변수는 없는지 검사한다. 있다면 매개변수로 전달한다
+4. 변수를 다 처리했다면 컴파일한다
+5. 원본 함수에서 추출한 코드 부분을 새로 만든 함수를 호출하는 문장으로 바꾼다
+6. 테스트한다
+7. 다른 코드에 방금 추출한 것과 똑같거나 비슷한 코드가 없는지 살핀다. 있다면 방금 추출한 새 함수를 호출하도록 바꿀지 검토한다
+
+<details>
+<summary>리팩터링 전 코드</summary>
+
+```js
+export function printOwing(invoice) {
+  let outstanding = 0;
+
+  console.log("***********************");
+  console.log("**** Customer Owes ****");
+  console.log("***********************");
+
+  // calculate outstanding
+  for (const o of invoice.orders) {
+    outstanding += o.amount;
+  }
+
+  // record due date
+  const today = new Date();
+  invoice.dueDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 30
+  );
+
+  //print details
+  console.log(`name: ${invoice.customer}`);
+  console.log(`amount: ${outstanding}`);
+  console.log(`due: ${invoice.dueDate.toLocaleDateString()}`);
+}
+
+const invoice = {
+  orders: [{ amount: 2 }, { amount: 5 }],
+  customer: "준희",
+};
+printOwing(invoice);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function printOwing(invoice) {
+  printBanner();
+  let outstanding = calculateOutstanding(invoice);
+  recordDueDate(invoice);
+  printDetails(invoice, outstanding);
+}
+
+function printBanner() {
+  console.log("***********************");
+  console.log("**** 고객 채무 ****");
+  console.log("***********************");
+}
+
+function calculateOutstanding(invoice) {
+  return invoice.orders.reduce((sum, order) => (sum += order.amount), 0);
+}
+
+function recordDueDate(invoice) {
+  const today = new Date();
+  invoice.dueDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 30
+  );
+}
+
+function printDetails(invoice, outstanding) {
+  console.log(`name: ${invoice.customer}`);
+  console.log(`amount: ${outstanding}`);
+  console.log(`due: ${invoice.dueDate.toLocaleDateString()}`);
+}
+
+const invoice = {
+  orders: [{ amount: 2 }, { amount: 5 }],
+  customer: "준희",
+};
+printOwing(invoice);
+
+/**
+ * 함수 내부 로직이 너무 길어서 이해하기 위한 비용이 많이 든다
+ *
+ * 지역 변수는 사용하는 곳과 최대한 가까이 놓기
+ */
+```
+
+</details>
+
+### 6.2 함수 인라인하기
+
+**배경**
+
+이 책은 목적이 드러나는 이름의 짤막한 함수를 이용하기를 권한다. 그래야 코드가 명료해지고 이해하기 쉬워지기 때문이다. 하지만 때로는 함수 본문이 이름만큼 명확한 경우도 있다. 또는 함수 본문 코드를 이름만큼 깔끔하게 리팩터링할 때도 있다. 이럴 때는 그 함수를 제거한다. 간접 호출은 유용할 수도 있지만 쓸데없는 간접 호출은 거슬릴 뿐이다.
+
+**절차**
+
+1. 다형 메서드인지 확인한다
+2. 인라인할 함수를 호출하는 곳을 모두 찾는다
+3. 각 호출문을 함수 본문으로 교체한다
+4. 하나씩 교체할 때마다 테스트한다
+5. 함수 정의(원래 함수)를 삭제한다
+
+<details>
+<summary>리팩터링 전 코드</summary>
+
+```js
+function rating(driver) {
+  return moreThanFiveLateDeliveries(driver) ? 2 : 1;
+}
+
+function moreThanFiveLateDeliveries(dvr) {
+  return dvr.numberOfLateDeliveries > 5;
+}
+
+function reportLines(customer) {
+  const lines = [];
+  gatherCustomerData(lines, customer);
+  return lines;
+}
+
+function gatherCustomerData(out, customer) {
+  out.push(["name", customer.name]);
+  out.push(["location", customer.location]);
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function rating(driver) {
+  return driver.numberOfLateDeliveries > 5 ? 2 : 1;
+}
+
+function reportLines(customer) {
+  const lines = [];
+  lines.push(["name", customer.name]);
+  lines.push(["location", customer.location]);
+  return lines;
+}
+
+/**
+ * 리팩터링은 extract (추출하기) 와 inline(인라인하기) 의 반복이다
+ */
+```
+
+</details>
+
+## 마크업 복사용
+
+<details>
+<summary>리팩터링 전 코드</summary>
+
+```js
+
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+
+```
+
+</details>

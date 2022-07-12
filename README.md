@@ -92,8 +92,6 @@
 
 </details>
 
-<br/>
-
 <details>
 <summary>리팩터링 목차</summary>
 
