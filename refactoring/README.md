@@ -1199,13 +1199,56 @@ let result = `<h1>${title}</h1>`;
 
 </details>
 
+### 6.8 매개변수 객체 만들기
+
+**배경**
+
+데이터 항목 여러 개가 이 함수에서 저 함수로 함께 몰려다니는 경우를 자주 본다. 이러한 데이터 무리를 발견하면 데이터 구조 하나로 모아주곤 한다.
+
+데이터 뭉치를 데이터 구조로 묶으면 데이터 사이의 관계가 명확해진다는 이점을 얻는다. 게다가 함수가 이 데이터 구조를 받게 하면 매개변수 수가 줄어든다. 같은 데이터 구조를 사용하는 모든 함수가 원소를 참조할 때 항상 똑같은 이름을 사용하기 때문에 일관성도 높여준다.
+
+하지만 이 리팩터링의 진정한 힘은 코드를 더 근본적으로 바꿔준다는 데 있다. 이런 데이터 구조를 새로 발견하면 이 데이터 구조를 활용하는 형태로 프로그램 동작을 재구성한다. 데이터 구조에 담길 데이터에 공통으로 적용되는 동작을 추출해서 함수로 만드는 것이다.
+
+**절차**
+
+1. 적당한 데이터 구조가 아직 마련되어 있지 않다면 새로 만든다
+2. 테스트한다
+3. 함수 선언 바꾸기로 새 데이터 구조를 매개변수로 추가한다
+4. 테스트한다
+5. 함수 호출 시 새로운 데이터 구조 인스턴스를 넘기도록 수정한다. 하나씩 수정할 때마다 테스트한다
+6. 기존 매개변수를 사용하던 코드를 새 데이터 구조의 원소를 사용하도록 바꾼다
+7. 다 바꿨다면 기존 매개변수를 제거하고 테스트한다
+
 ## 마크업 복사용
 
 <details>
 <summary>리팩터링 전 코드</summary>
 
 ```js
+function readingsOutsideRange(station, min, max) {
+  return station.readings.filter((r) => r.temp < min || r.temp > max);
+}
 
+const station = {
+  name: "ZB1",
+  readings: [
+    { temp: 47, time: "2016-11-10 09:10" },
+    { temp: 53, time: "2016-11-10 09:20" },
+    { temp: 58, time: "2016-11-10 09:30" },
+    { temp: 53, time: "2016-11-10 09:40" },
+    { temp: 51, time: "2016-11-10 09:50" },
+  ],
+};
+const operationPlan = {
+  temperatureFloor: 51,
+  temperatureCeiling: 53,
+};
+
+readingsOutsideRange(
+  station,
+  operationPlan.temperatureFloor,
+  operationPlan.temperatureCeiling
+);
 ```
 
 </details>
@@ -1214,7 +1257,70 @@ let result = `<h1>${title}</h1>`;
 <summary>리팩터링 이후 코드</summary>
 
 ```js
+function readingsOutsideRange(station, range) {
+  return station.readings.filter(
+    (r) => r.temp < range.temperatureFloor || r.temp > range.temperatureCeiling
+  );
+}
 
+const station = {
+  name: "ZB1",
+  readings: [
+    { temp: 47, time: "2016-11-10 09:10" },
+    { temp: 53, time: "2016-11-10 09:20" },
+    { temp: 58, time: "2016-11-10 09:30" },
+    { temp: 53, time: "2016-11-10 09:40" },
+    { temp: 51, time: "2016-11-10 09:50" },
+  ],
+};
+const operationPlan = {
+  temperatureFloor: 51,
+  temperatureCeiling: 53,
+};
+
+readingsOutsideRange(station, operationPlan);
+```
+
+```js
+function readingsOutsideRange(station, range) {
+  return station.readings.filter((r) => !range.contains(r.temp));
+}
+
+class NumberRange {
+  // private 을 나타내는 접두사 #
+  #min;
+  #max;
+  constructor(min, max) {
+    this.#min = min;
+    this.#max = max;
+  }
+
+  get min() {
+    return this.#min;
+  }
+
+  get max() {
+    return this.#max;
+  }
+
+  contains(number) {
+    return number >= this.#min && number <= this.#max;
+  }
+}
+
+const station = {
+  name: "ZB1",
+  readings: [
+    { temp: 47, time: "2016-11-10 09:10" },
+    { temp: 53, time: "2016-11-10 09:20" },
+    { temp: 58, time: "2016-11-10 09:30" },
+    { temp: 53, time: "2016-11-10 09:40" },
+    { temp: 51, time: "2016-11-10 09:50" },
+  ],
+};
+const operationPlan = new NumberRange(51, 53);
+
+readingsOutsideRange(station, operationPlan);
 ```
 
 </details>
