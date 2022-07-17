@@ -902,6 +902,303 @@ function reportLines(customer) {
 
 </details>
 
+### 6.3 변수 추출하기
+
+**배경**
+표현식이 너무 복잡해서 이해하기 어려울 때가 있다. 이럴 때 지역 변수를 활용하면 표현식을 쪼개 관리하기 더 쉽게 만들 수 있다. 그러면 복잡한 로직을 구성하는 단계마다 이름을 붙일 수 있어서 코드의 목적을 훨씬 명확하게 드러낼 수 있다.
+
+변수 추출을 고려한다고 함은 표현식에 이름을 붙이고 싶다는 뜻이다. 이름을 붙이기로 했다면 그 이름이 들어갈 문맥도 살펴야 한다. 현재 함수 안에서만 의미가 있다면 변수로 추출하는 것이 좋다. 그러나 함수를 벗어난 넓은 문맥에서까지 의미가 된다면 그 넓은 범위에서 통용되는 이름을 생각해야 한다. 다시 말해 변수가 아닌 함수로 추출해야 한다.
+
+**절차**
+
+1. 추출하려는 표현식에 부작용은 없는지 확인한다
+2. 불변 변수를 하나 선언하고 이름을 붙일 표현식의 복제본을 대입한다
+3. 원본 표현식을 새로 만든 변수로 교체한다
+4. 테스트한다
+5. 표현식을 여러 곳에서 사용한다면 각각을 새로 만든 변수로 교체한다. 하나 교체할 때마다 테스트 한다
+
+<details>
+<summary>리팩터링 전 코드</summary>
+
+```js
+export function price(order) {
+  // 가격(price) = 기본가격 - 수량할인 + 배송비
+  return (
+    order.quantity * order.itemPrice -
+    Math.max(0, order.quantity - 500) * order.itemPrice * 0.05 +
+    Math.min(order.quantity * order.itemPrice * 0.1, 100)
+  );
+}
+```
+
+```js
+class Order {
+  constructor(aRecord) {
+    this._data = aRecord;
+  }
+
+  get quantity() {
+    return this._data.quantity;
+  }
+  get itemPrice() {
+    return this._data.itemPrice;
+  }
+
+  get price() {
+    return (
+      this.quantity * this.itemPrice -
+      Math.max(0, this.quantity - 500) * this.itemPrice * 0.05 +
+      Math.min(this.quantity * this.itemPrice * 0.1, 100)
+    );
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function price(order) {
+  const basePrice = order.quantity * order.itemPrice;
+  const discount = Math.max(0, order.quantity - 500) * order.itemPrice * 0.05;
+  const shopping = Math.min(order.quantity * order.itemPrice * 0.1, 100);
+
+  return basePrice - discount + shopping;
+}
+```
+
+```js
+class Order {
+  constructor(aRecord) {
+    this._data = aRecord;
+  }
+
+  get quantity() {
+    return this._data.quantity;
+  }
+  get itemPrice() {
+    return this._data.itemPrice;
+  }
+
+  get price() {
+    return this.basePrice - this.discount + this.shipping;
+  }
+
+  get basePrice() {
+    return this.quantity * this.itemPrice;
+  }
+
+  get discount() {
+    return Math.max(0, this.quantity - 500) * this.itemPrice * 0.05;
+  }
+
+  get shipping() {
+    return Math.min(this.quantity * this.itemPrice * 0.1, 100);
+  }
+}
+```
+
+</details>
+
+### 6.4 변수 인라인하기
+
+**배경**
+
+변수는 함수 안에서 표현식을 가리키는 이름으로 쓰이며, 대체로 긍정적인 효과를 준다. 하지만 그 이름이 원래 표현식과 다를 바 없을 때도 있다. 또 변수가 주변 코드를 리팩터링하는 데 방해가 되기도 한다. 이럴 때는 그 변수를 인라인하는 것이 좋다.
+
+**절차**
+
+1. 대입문의 우변(표현식)에서 부작용이 생기지 않는지 확인한다
+2. 변수가 불변으로 선언되지 않았다면 불변으로 만든 후 테스트한다
+3. 이 변수를 가장 처음 사용하는 코드를 찾아서 대입문 우변의 코드로 바꾼다
+4. 테스트한다
+5. 변수를 사용하는 부분을 모두 교체할 때까지 이 과정을 반복한다
+6. 변수 선언문과 대입문을 지운다
+7. 테스트한다
+
+<details>
+<summary>리팩터링 전 코드</summary>
+
+```js
+function isDeliveryFree(anOrder) {
+  let basePrice = anOrder.basePrice;
+  return basePrice > 1000;
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function isDeliveryFree(anOrder) {
+  return anOrder.basePrice > 1000;
+}
+```
+
+</details>
+
+### 6.5 함수 선언 바꾸기
+
+**배경**
+
+함수는 프로그램을 작은 부분으로 나누는 주된 수단이다. 함수 선언은 각 부분이 서로 맞물리는 방식을 표현하며, 실질적으로 소프트웨어 시스템의 구성 요소를 조립하는 연결부 역할을 한다. 연결부를 잘 정의하면 시스템에 새로운 부분을 추가하기가 쉬워지는 반면, 잘못 정의하면 지속적인 방해 요인으로 작용하여 소프트웨어 동작을 파악하기 어려워지고 요구사항이 바뀔 때 적절히 수정하기 어렵게 한다.
+
+이러한 연결부에서 가장 중요한 요소는 함수의 이름이다. 이름이 좋으면 함수의 구현 코드를 살펴볼 필요 없이 호출문만 보고도 무슨 일을 하는지 파악할 수 있다. 하지만 좋은 이름을 떠올리기란 쉽지 않다. 그래서 나는 이름이 잘못된 함수를 발견하면 더 나은 이름이 떠오르는 즉시 바꾸라는 명령으로 받아들인다. 그래야 나중에 그 코드를 다시 볼 때 무슨 일을 하는지 '또' 고민하지 않게 된다.
+
+함수의 매개변수도 마찬가지다. 매개변수는 함수가 외부 세계와 어우러지는 방식을 정의한다. 매개변수는 함수를 사용하는 문맥을 설정한다. 매개변수를 올바르게 선택하기란 단순히 규칙 몇 개로 표현할 수 없다. 이 문제는 정답이 없으며 시간이 흐를수록 더욱 더 그렇다. 따라서 어떻게 연결하는 것이 더 나은지 이해하게 될 때마다 그에 맞게 코드를 개선할 수 있도록 함수 선언 바꾸기 리팩터링과 친숙해져야만 한다.
+
+**간단한 절차**
+
+1. 매개변수를 제거라려거든 먼저 함수 본문에서 제거 대상 매개변수를 참조하는 곳은 없는지 확인한다
+2. 메서드 선언을 원하는 형태로 바꾼다
+3. 기존 메서드 선언을 참조하는 부분을 모두 찾아서 바뀐 형태로 수정한다
+4. 테스트한다
+
+변경할 게 둘 이상이면 나눠서 처리하는 편이 나을 때가 많다. 따라서 이름 변경과 매개변수 추가를 모두 하고 싶다면 가각을 독립적으로 처리하자.
+
+**마이그레이션 절차**
+
+1. 이어지는 추출 단계를 수월하게 만들어야 한다면 함수의 본문을 적절히 리팩터링한다
+2. 함수 본문을 새로운 함수로 추출한다
+3. 추출한 함수에 매개변수를 추가해야 한다면 '간단한 절차'를 따라 추가한다
+4. 테스트한다
+5. 기존 함수를 인라인한다
+6. 이름을 임시로 붙여뒀다면 함수 선언 바꾸기를 한 번 더 적용해서 원래 이름으로 되돌린다
+7. 테스트한다
+
+<details>
+<summary>리팩터링 전 코드</summary>
+
+```js
+export function circum(radius) {
+  return 2 * Math.PI * radius;
+}
+```
+
+```js
+export default class Book {
+  #reservations;
+  constructor() {
+    this.#reservations = [];
+  }
+
+  addReservation(customer) {
+    this.#reservations.push(customer);
+  }
+
+  hasReservation(customer) {
+    return this.#reservations.some(
+      (reservedCustomer) => reservedCustomer.id === customer.id
+    );
+  }
+}
+```
+
+```js
+export function inNewEngland(aCustomer) {
+  return ["MA", "CT", "ME", "VT", "NH", "RI"].includes(aCustomer.address.state);
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function circumference(radius) {
+  return 2 * Math.PI * radius;
+}
+
+// F2 - 기호 이름 바꾸기
+// circumference - 원주율
+```
+
+```js
+export default class Book {
+  #reservations;
+  constructor() {
+    this.#reservations = [];
+  }
+
+  addReservation(customer, isPriority = false) {
+    this.#reservations.push(customer);
+  }
+
+  hasReservation(customer) {
+    return this.#reservations.some(
+      (reservedCustomer) => reservedCustomer.id === customer.id
+    );
+  }
+}
+
+/**
+ * isPriority 는 불리언 값을 받아, 함수 내에서 우선순위가 높을 경우 추가적으로 다른 작업을 하는 매개변수를 나타낸다
+ * addReservation 내의 파라미터를 추가하는 경우이므로 이전 값에 영향을 주지 않게하기 위해 isPriority 의 초기값을 false 로 준다
+ */
+```
+
+```js
+export function inNewEngland(state) {
+  return ["MA", "CT", "ME", "VT", "NH", "RI"].includes(state);
+}
+```
+
+</details>
+
+### 6.7 변수 이름 바꾸기
+
+**배경**
+
+명확한 프로그래밍의 핵심은 이름짓기다. 변수는 프로그래머가 하려는 일에 관해 많은 것을 설명해준다. 단, 이름을 잘 지었을 때만 그렇다. 특히 이름의 중요성은 그사용 범위에 영향을 많이 받는다. 한 줄짜리 람다식에서 사용하는 변수는 대체로 쉽게 파악할 수 있다. 맥락으로부터 변수의 목적을 명확히 알 수 있어서 한 글자로 된 이름을 짓기도 한다.
+
+함수 호출 한 번으로 끝나지 않고 값이 영속되는 필드라면 이름에 더 신경 써야 한다.
+
+**절차**
+
+1. 폭 넓게 쓰이는 변수라면 변수 캡슐화하기를 고려한다
+2. 이름을 바꿀 변수를 참조하는 곳을 모두 찾아서, 하나씩 변경한다
+
+- 다른 코드베이스에서 참조하는 변수는 외부에 공개된 변수이므로 이 리팩터링을 적용할 수 없다
+- 변수 값이 변하지 않는다면 다른 이름으로 복제본을 만들어서 하나씩 점진적으로 변경한다
+
+3. 테스트한다
+
+<details>
+<summary>리팩터링 전 코드</summary>
+
+```js
+let a = height * width;
+
+const cpyNm = "애플";
+
+let tpHd = "제목없음";
+let result = `<h1>${tpHd}</h1>`;
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+let area = width * height;
+
+const companyName = "애플";
+
+let title = "제목없음";
+let movieTitle = "영화 제목";
+let pageTitle = "제목";
+
+let result = `<h1>${title}</h1>`;
+```
+
+</details>
+
 ## 마크업 복사용
 
 <details>
