@@ -1397,6 +1397,8 @@ console.log(owner.firstName);
 console.log(getDefaultOwner());
 ```
 
+</details>
+
 ### 6.9 여러 함수를 클래스로 묶기
 
 <details>
@@ -1519,6 +1521,8 @@ const taxableCharge = aReading.taxableCharge;
 const basicChargeAmount = aReading.baseCharge;
 ```
 
+</details>
+
 ### 6.10 여러 함수를 변환 함수로 묶기
 
 <details>
@@ -1595,6 +1599,8 @@ console.log(reading.taxableCharge);
 
 ```
 
+</details>
+
 ### 6.11 단계 쪼개기
 
 <details>
@@ -1612,6 +1618,8 @@ console.log(reading.taxableCharge);
 ```js
 
 ```
+
+</details>
 
 ## 마크업 복사용
 
