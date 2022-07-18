@@ -1219,8 +1219,6 @@ let result = `<h1>${title}</h1>`;
 6. 기존 매개변수를 사용하던 코드를 새 데이터 구조의 원소를 사용하도록 바꾼다
 7. 다 바꿨다면 기존 매개변수를 제거하고 테스트한다
 
-## 마크업 복사용
-
 <details>
 <summary>리팩터링 전 코드</summary>
 
@@ -1321,6 +1319,316 @@ const station = {
 const operationPlan = new NumberRange(51, 53);
 
 readingsOutsideRange(station, operationPlan);
+```
+
+</details>
+
+### 6.6 변수 캡슐화하기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+let defaultOwner = { firstName: "마틴", lastName: "파울러" };
+
+export function getDefaultOwner() {
+  return defaultOwner;
+}
+```
+
+```js
+let defaultOwner = { firstName: "마틴", lastName: "파울러" };
+
+function getDefaultOwner() {
+  return defaultOwner;
+}
+
+const owner = getDefaultOwner();
+owner.firstName = "준희";
+console.log(owner);
+console.log(getDefaultOwner());
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+let defaultOwner = { firstName: "마틴", lastName: "파울러" };
+
+function getDefaultOwner() {
+  // return Object.assign({}, defaultOwner);
+  return { ...defaultOwner };
+}
+
+const owner = getDefaultOwner();
+owner.firstName = "준희";
+console.log(owner);
+console.log(getDefaultOwner());
+```
+
+```js
+class Person {
+  #lastName;
+  #firstName;
+  constructor(data) {
+    this.#lastName = data.lastName;
+    this.#firstName = data.firstName;
+  }
+
+  get lastName() {
+    return this.#lastName;
+  }
+  get firstName() {
+    return this.#firstName;
+  }
+}
+
+let defaultOwner = new Person({ firstName: "마틴", lastName: "파울러" });
+
+function getDefaultOwner() {
+  return defaultOwner;
+}
+
+const owner = getDefaultOwner();
+
+console.log(owner.firstName);
+console.log(getDefaultOwner());
+```
+
+### 6.9 여러 함수를 클래스로 묶기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+const reading = { customer: "ivan", quantity: 10, month: 5, year: 2017 };
+
+export function acquireReading() {
+  return reading;
+}
+
+export function baseRate(month, year) {
+  if (year === 2017 && month === 5) return 0.1;
+  return 0.2;
+}
+```
+
+```js
+import { acquireReading, baseRate } from "./6-9.js";
+
+const aReading = acquireReading();
+
+const baseCharge = baseRate(aReading.month, aReading.year) * aReading.quantity;
+console.log(baseCharge);
+```
+
+```js
+import { acquireReading, baseRate } from "./6-9.js";
+
+const aReading = acquireReading();
+const base = baseRate(aReading.month, aReading.year) * aReading.quantity;
+
+function taxThreshold(year) {
+  return 0.1;
+}
+
+export const taxableCharge = Math.max(0, base - taxThreshold(aReading.year));
+```
+
+```js
+import { acquireReading, baseRate } from "./6-9.js";
+
+const aReading = acquireReading();
+
+function calculateBaseCharge(aReading) {
+  return baseRate(aReading.month, aReading.year) * aReading.quantity;
+}
+
+const basicChargeAmount = calculateBaseCharge(aReading);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Reading {
+  #customer;
+  #quantity;
+  #month;
+  #year;
+  constructor(data) {
+    this.#customer = data.customer;
+    this.#quantity = data.quantity;
+    this.#month = data.month;
+    this.#year = data.year;
+  }
+
+  get customer() {
+    return this.#customer;
+  }
+
+  get quantity() {
+    return this.#quantity;
+  }
+
+  get month() {
+    return this.#month;
+  }
+
+  get year() {
+    return this.#year;
+  }
+
+  get baseRate() {
+    if (this.#year === 2017 && this.#month === 5) return 0.1;
+    return 0.2;
+  }
+
+  get baseCharge() {
+    return this.baseRate * this.quantity;
+  }
+
+  get taxThreshold() {
+    return 0.1;
+  }
+
+  get taxableCharge() {
+    return Math.max(0, this.baseCharge - 0.1 * this.taxThreshold);
+  }
+}
+
+const reading = new Reading({
+  customer: "ivan",
+  quantity: 10,
+  month: 5,
+  year: 2017,
+});
+
+function acquireReading() {
+  return reading;
+}
+
+const aReading = acquireReading();
+
+const baseCharge = aReading.baseCharge;
+const taxableCharge = aReading.taxableCharge;
+const basicChargeAmount = aReading.baseCharge;
+```
+
+### 6.10 여러 함수를 변환 함수로 묶기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+const reading = { customer: "ivan", quantity: 10, month: 5, year: 2017 };
+
+export function acquireReading() {
+  return reading;
+}
+
+export function baseRate(month, year) {
+  if (year === 2017 && month === 5) return 0.1;
+  return 0.2;
+}
+
+/**
+ * 요즘은 클래스로 묶는 방식을 더 선호한다
+ * 변환 함수로 만드는 작업은 이전에 많이 사용된 방식
+ */
+
+...
+
+import { acquireReading, baseRate } from './6-10.js';
+
+const aReading = acquireReading();
+
+const baseCharge = baseRate(aReading.month, aReading.year) * aReading.quantity;
+console.log(baseCharge);
+
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+import _ from "lodash";
+
+const reading = { customer: "ivan", quantity: 10, month: 5, year: 2017 };
+
+export function acquireReading() {
+  return reading;
+}
+
+export function enrichReading(original) {
+  const result = _.cloneDeep(original);
+  result.baseCharge = calculateBaseCharge(result);
+  result.taxableCharge = Math.max(
+    0,
+    result.baseCharge - taxTreshold(result.year)
+  );
+  return result;
+}
+
+function calculateBaseCharge(reading) {
+  return baseRate(reading.month, reading.year) * reading.quantity;
+}
+
+export function baseRate(month, year) {
+  if (year === 2017 && month === 5) return 0.1;
+  return 0.2;
+}
+...
+import { acquireReading, enrichReading } from "./6-10.js";
+
+const rawReading = acquireReading();
+const reading = enrichReading(rawReading);
+
+console.log(reading.baseCharge);
+console.log(reading.taxableCharge);
+
+```
+
+### 6.11 단계 쪼개기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+
+```
+
+## 마크업 복사용
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+
 ```
 
 </details>
