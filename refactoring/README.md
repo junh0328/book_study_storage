@@ -1325,6 +1325,29 @@ readingsOutsideRange(station, operationPlan);
 
 ### 6.6 변수 캡슐화하기
 
+**배경**
+
+리팩터링은 결국 프로그램의 요소를 조작하는 일이다. 함수는 데이터보다 다루기가 수월하다. 함수를 사용한다는 건 대체로 호출한다는 뜻이고, 함수의 이름을 바꾸거나 다른 모듈로 옮기기는 어렵지 않다. 여차하면 기존 함수를 그대로 둔 채 전달함수로 활용할 수도 있기 때문이다.
+
+반대로 데이터는 함수보다 다루기가 까다로운데, 그 이유는 이런 식(이름을 바꾸거나 다른 모듈로 옮기기)으로 처리할 수 없기 때문이다. 데이터는 참조하는 모든 부분을 한 번에 바꿔야 코드가 제대로 작동한다. 짧은 함수 안의 임시 변수처럼 유효범위가 아주 좁은 데이터는 어려울 게 없지만, 유효범위가 넓어질수록 다루기 어려워진다.
+
+그래서 접근할 수 있는 범위가 넓은 데이터를 옮길 때는 먼저 그 데이터로의 접근을 독점하는 함수를 만드는 식으로 **캡슐화**하는 것이 가장 좋은 방법일 때가 많다. **데이터 재구성이라는 어려운 작업을 함수 재구성이라는 더 단순한 작업으로 변환하는 것이다.**
+
+데이터 캡슐화는 데이터를 변경하고 사용하는 코드를 감시할 수 있는 확실한 통로가 되어주기 때문에 변경 전 검증이나 변경 후 추가 로직을 쉽게 끼워 넣을 수 있다.
+
+객체 지향에서 객체의 데이터를 항상 `private`으로 유지해야 한다고 강조하는 이유가 바로 여기에 있다. 데이터의 유효범위가 넓을수록 캡슐화하여 가시 범위를 제한하려 한다.
+
+불변 데이턴는 가변 데이터보다 캡슐화할 이유가 적다. 데이터가 변경될 일이 없어서 갱신 전 검증 같은 추가 로직이 자리할 공간을 마련할 필요가 없기 때문이다. 게다가 불변 데이터는 옮길 필요 없이 그냥 복제하면 된다.
+
+**절차**
+
+1. 변수로의 접근과 갱신을 전담하는 캡슐화 함수를 만든다
+2. 정적 검사를 수행한다
+3. 변수를 직접 참조하던 부분을 모두 적절한 캡슐화 함수 호출로 바꾼다. 하나씩 바꿀 때마다 테스트한다
+4. 변수의 접근 범위를 제한한다 (private)
+5. 테스트한다
+6. 변수 값이 레코드라면 레코드 캡슐화하기를 적용할지 고려해본다
+
 <details>
 <summary>리팩터링 이전 코드</summary>
 
@@ -1400,6 +1423,20 @@ console.log(getDefaultOwner());
 </details>
 
 ### 6.9 여러 함수를 클래스로 묶기
+
+**배경**
+
+클래스는 대다수의 최신 프로그래밍 언어가 제공하는 기본적인 빌딩 블록이다. 클래스는 데이터와 함수를 하나의 공유 환경으로 묶은 후, 다른 프로그램 요소와 어우러질 수 있도록 그중 일부를 외부에 제공한다. 클래스는 객체 지향 언어의 기본인 동시에 다른 패러다임 언어에도 유용하다.
+
+클래스로 묶으면 이 함수들이 공유하는 공통 환경을 더 명확하게 표현할 수 있고, 각 함수에 전달되는 인수를 줄여서 각 객체 안에서의 함수 호출을 간결하게 만들 수 있다. 이런 객체를 시스템의 다른 부분에 전달하기 위한 참조를 제공할 수 있다.
+
+클래스로 묶을 때의 두드러진 장점은 클라이언트가 객체의 핵심 데이터를 변경할 수 있고, 파생 객체들을 일관되게 관리할 수 있다는 것이다.
+
+**절차**
+
+1. 함수들이 공유하는 공통 데이터 레코드를 캡슐화한다
+2. 공통 레코드를 사용하는 함수 각각을 새 클래스로 옮긴다
+3. 데이터를 조작하는 로직들을 함수로 추출해서 새 클래스로 옮긴다
 
 <details>
 <summary>리팩터링 이전 코드</summary>
@@ -1525,6 +1562,23 @@ const basicChargeAmount = aReading.baseCharge;
 
 ### 6.10 여러 함수를 변환 함수로 묶기
 
+**배경**
+
+소프트웨어는 데이터를 입력받아서 여러 가지 정보를 도출하곤 한다. 이렇게 도출된 정보는 여러 곳에서 사용될 수 있는데, 그러다 보면 이 정보가 사용되는 곳마다 같은 도출 로직이 반복되기도 한다. 나는 이런 도출 작업들을 한데로 모아두길 좋아한다. 모아두면 검색과 갱신을 일관된 장소에서 처리할 수 있고 로직 중복도 막을 수 있다.
+
+이렇게 하기 위한 방법으로 **변환 함수**를 사용할 수 있다. 변환 함수는 원본 데이터를 입력받아서 필요한 정보를 모두 도출한 뒤, 각각의 출력 데이터의 필드에 넣어 반환한다. 이렇게 해두면 도출 과정을 검토할 일이 생겼을 때 변환 함수만 살펴보면 된다.
+
+원본 데이터가 코드 안에서 갱신될 때는 클래스로 묶는 편이 훨씬 낫다. 변환 함수로 묶으면 가공한 데이터를 새로운 레코드에 저장하므로, 원본 데이터가 수정되면 일관성이 깨질 수 있기 때문이다.
+
+여러 함수를 한데 묶는 이유 하나는 도출 로직이 중복되는 것을 피하기 위해서다. 이 로직을 함수로 추루하는 것만으로도 같은 효과를 볼 수 있지만, 데이터 구조와 이를 사용하는 함수가 근처에 있지 않으면 함수를 발견하기 어려울 때가 많다. 변환 함수로 묶으면 이런 함수들을 쉽게 찾아 쓸 수 있다.
+
+**절차**
+
+1. 변환할 레코드를 입력받아서 값을 그대로 반환하는 변환 함수를 만든다
+2. 묶을 함수 중 함수 하나를 골라서 본문 코드를 변환 함수로 옮기고, 처리 결과를 래코드에 새 필드로 기록한다. 그런 다음 클라이언트 코드가 이 필드를 사용하도록 수정한다
+3. 테스트한다
+4. 나머지 관련 함수도 위 과정에 따라 처리한다
+
 <details>
 <summary>리팩터링 이전 코드</summary>
 
@@ -1603,11 +1657,72 @@ console.log(reading.taxableCharge);
 
 ### 6.11 단계 쪼개기
 
+**배경**
+
+필자는 서로 다른 두 대상을 한꺼번에 다루는 코드를 발견하면 각각을 별개 모듈로 나누는 방법을 모색한다. 코드를 수정해야 할 때 두 대상을 동시에 생각할 필요 없이 하나에만 집중하기 위해서다. 모듈이 잘 분리되어 있다면 다른 모듈의 상세 내용은 전혀 기억하지 못해도 원하는 대로 수정을 끝마칠 수도 있다.
+
+이렇게 분리하는 가장 간편한 방법 하나는 동작을 연이은 두 단계로 쪼개는 것이다.
+
+이렇게 단계를 쪼개는 기법은 주로 덩치 큰 소프트웨어에 적용된다. 하지만 나는 규모에 관계없이 여러 단계로 분리하면 좋을만한 코드를 발견할 때마다 기본적인 단계 쪼개기 리팩터링을 한다. 다른 단계로 볼 수 있는 코드 영역들이 마침 서로 다른 데이터와 함수를 사용한다면 단계 쪼개기에 적합하다는 뜻이다. 이 코드 영역들을 별도 모듈로 분리하면 그 차이를 코드에서 훨씬 분명하게 드러낼 수 있다.
+
+**절차**
+
+1. 두 번째 단계에 해당하는 코드를 독립 함수로 추출한다
+2. 테스트한다
+3. 중간 데이터 구조를 만들어서 앞에서 추출한 함수의 인수로 추가한다
+4. 테스트한다
+5. 추출한 두 번째 단계 함수의 매개변수를 하나씩 검토한다. 그중 첫 번째 단계에서 사용되는 것은 중간 데이터 구조로 옮긴다. 하나씩 옮길 때마다 테스트한다
+6. 첫 번째 단계 코드를 함수로 추출하면서 중간 데이터 구조를 반환하도록 만든다.
+
 <details>
 <summary>리팩터링 이전 코드</summary>
 
 ```js
+function priceOrder(product, quantity, shippingMethod) {
+  // 기본 제품 가격
+  const basePrice = product.basePrice * quantity;
 
+  // 할인 가격
+  const discount =
+    Math.max(quantity - product.discountThreshold, 0) *
+    product.basePrice *
+    product.discountRate;
+
+  // 개별 배송비
+  const shippingPerCase =
+    basePrice > shippingMethod.discountThreshold
+      ? shippingMethod.discountedFee
+      : shippingMethod.feePerCase;
+
+  // 최종 배송비
+  const shippingCost = quantity * shippingPerCase;
+
+  // 가격
+  const price = basePrice - discount + shippingCost;
+
+  return price;
+}
+
+// 사용 예:
+const product = {
+  basePrice: 10,
+  discountRate: 0.1,
+  discountThreshold: 10,
+};
+
+const shippingMethod = {
+  discountThreshold: 20,
+  feePerCase: 5,
+  discountedFee: 3,
+};
+
+const price = priceOrder(product, 5, shippingMethod);
+console.log(price);
+
+/**
+ * 내가 생각한 리팩터링 방향
+ * 1. 객체를 클래스로 만들어 내부 프로퍼티에 직접 접근하지 못 하도록 막기
+ */
 ```
 
 </details>
@@ -1616,7 +1731,65 @@ console.log(reading.taxableCharge);
 <summary>리팩터링 이후 코드</summary>
 
 ```js
+function priceOrder(product, quantity, shippingMethod) {
+  const basePrice = calculateBasePrice(product, quantity);
+  const discount = calcualteDiscountedPrice(product, quantity);
+  const shippingCost = calculateShippingCost(
+    basePrice,
+    quantity,
+    shippingMethod
+  );
 
+  return basePrice - discount + shippingCost;
+}
+
+function calculateBasePrice(product, quantity) {
+  return product.basePrice * quantity;
+}
+
+function calcualteDiscountedPrice(product, quantity) {
+  return (
+    Math.max(quantity - product.discountThreshold, 0) *
+    product.basePrice *
+    product.discountRate
+  );
+}
+
+function calculateShippingCost(basePrice, quantity, shippingMethod) {
+  const shippingPerCase =
+    basePrice > shippingMethod.discountThreshold
+      ? shippingMethod.discountedFee
+      : shippingMethod.feePerCase;
+
+  return quantity * shippingPerCase;
+}
+
+// 사용 예:
+const product = {
+  basePrice: 10,
+  discountRate: 0.1,
+  discountThreshold: 10,
+};
+
+const shippingMethod = {
+  discountThreshold: 20,
+  feePerCase: 5,
+  discountedFee: 3,
+};
+
+const price = priceOrder(product, 5, shippingMethod);
+console.log(price);
+
+/**
+ * 내가 생각한 리팩터링 방향
+ * 1. 객체를 클래스로 만들어 내부 프로퍼티에 직접 접근하지 못 하도록 막기
+ */
+
+/**
+ * 1. 주석으로 변수의 의도 파악하기
+ * 2. 함수로 분리하기
+ * 3. 불필요한 (임시변수) 리턴문 생략하기
+ */
 ```
 
 </details>
