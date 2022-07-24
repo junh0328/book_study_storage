@@ -39,3 +39,7 @@ class Course {
 const ellie = new Person("준희");
 ellie.courses.push(new Course("리팩토링", true));
 console.log(ellie.courses.length);
+
+/**
+ * 외부에서 course를 업데이트하고 있는 상황
+ */
