@@ -11,6 +11,7 @@
 - [3. 코드에서 나는 악취](#3-코드에서-나는-악취)
 - [4. 테스트 구축하기](#4-테스트-구축하기)
 - [6. 기본적인 리팩터링](#6-기본적인-리팩터링)
+- [7. 캡슐화](#7-캡슐화)
 
 ## 1. 리팩터링 첫 번째 예시
 
@@ -1789,6 +1790,876 @@ console.log(price);
  * 1. 주석으로 변수의 의도 파악하기
  * 2. 함수로 분리하기
  * 3. 불필요한 (임시변수) 리턴문 생략하기
+ */
+```
+
+</details>
+
+## 7. 캡슐화
+
+### 7.1 레코드 캡슐화하기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+const organization = { name: "Acme Gooseberries", country: "GB" };
+
+organization.name = "eazel";
+console.log(organization.name);
+console.log(organization.country);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Organization {
+  #name;
+  #country;
+  #data; //low data, 오리지널 원본 데이터
+  constructor(data) {
+    this.#data = data;
+    this.#name = data.name;
+    this.#country = data.country;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  set name(value) {
+    return (this.#name = value);
+  }
+
+  get country() {
+    return this.#country;
+  }
+
+  set country(value) {
+    return (this.#country = value);
+  }
+
+  get rawData() {
+    return { ...this.#data }; // 얕은 복사
+  }
+}
+
+const organization = new Organization({
+  name: "Acme Gooseberries",
+  country: "GB",
+});
+
+console.log(organization.name);
+console.log(organization.country);
+```
+
+</details>
+
+### 7.2 컬렉션 캡슐화하기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+class Person {
+  #name;
+  #courses;
+  constructor(name) {
+    this.#name = name;
+    this.#courses = [];
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get courses() {
+    return this.#courses;
+  }
+
+  set courses(courses) {
+    this.#courses = courses;
+  }
+}
+
+class Course {
+  #name;
+  #isAdvanced;
+  constructor(name, isAdvanced) {
+    this.#name = name;
+    this.#isAdvanced = isAdvanced;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get isAdvanced() {
+    return this.#isAdvanced;
+  }
+}
+
+const ellie = new Person("준희");
+ellie.courses.push(new Course("리팩토링", true));
+console.log(ellie.courses.length);
+
+/**
+ * 외부에서 course를 업데이트하고 있는 상황
+ */
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Person {
+  #name;
+  #courses;
+  constructor(name) {
+    this.#name = name;
+    this.#courses = [];
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get courses() {
+    return [...this.#courses];
+  }
+
+  addCourse(course) {
+    this.#courses.push(course);
+  }
+
+  removeCourse(course, runIfAbsent) {
+    const index = this.#courses.indexOf(course);
+    if (index === -1) {
+      runIfAbsent();
+      return;
+    }
+
+    this.#courses.splice(index, 1);
+  }
+}
+
+class Course {
+  #name;
+  #isAdvanced;
+  constructor(name, isAdvanced) {
+    this.#name = name;
+    this.#isAdvanced = isAdvanced;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get isAdvanced() {
+    return this.#isAdvanced;
+  }
+}
+
+const junhee = new Person("준희");
+const course = new Course("래팩터링", true);
+junhee.addCourse(course);
+console.log(junhee.courses.length);
+junhee.removeCourse(course, () => {
+  console.log("해당 코스는 없다");
+});
+console.log(junhee.courses.length);
+junhee.removeCourse(course, () => {
+  console.log("해당 코스는 없다");
+});
+
+/**
+ * 외부에서 course를 업데이트하고 있는 상황
+ */
+```
+
+</details>
+
+### 7.3 기본형을 객체로 바꾸기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+export class Order {
+  constructor(data) {
+    this.priority = data.priority;
+  }
+}
+
+const orders = [
+  new Order({ priority: "normal" }),
+  new Order({ priority: "high" }),
+  new Order({ priority: "rush" }),
+];
+
+const highPriorityCount = orders.filter(
+  (o) => "high" === o.priority || "rush" === o.priority
+).length;
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Order {
+  constructor(data) {
+    this.priority = data.priority;
+  }
+
+  isHighPriority() {
+    return this.priority.higherThan("normal");
+  }
+}
+
+class Priority {
+  #value;
+
+  constructor(value) {
+    if (Priority.legalValues().includes(value)) {
+      this.#value = value;
+    } else {
+      throw new Error(`${value} is invalid for Priority`);
+    }
+  }
+
+  get index() {
+    return Priority.legalValues().findIndex(this.#value);
+  }
+
+  equals(other) {
+    return this.#index === other.index;
+  }
+
+  higherThan(other) {
+    return this.#index > other.index;
+  }
+
+  static legalValues() {
+    return ["low", "normal", "high", "rush"];
+  }
+}
+
+const orders = [
+  new Order({ priority: "normal" }),
+  new Order({ priority: "high" }),
+  new Order({ priority: "rush" }),
+];
+
+const highPriorityCount = orders.filter((o) => o.isHighPriority()).length;
+```
+
+</details>
+
+### 7.4 임시 변수를 질의 함수로 바꾸기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+class Order {
+  #quantity;
+  #item;
+  constructor(quantity, item) {
+    this.#quantity = quantity;
+    this.#item = item;
+  }
+
+  get price() {
+    const basePrice = this.#quantity * this.#item.price;
+    const discountFactor = 0.98;
+    if (basePrice > 1000) discountFactor -= 0.03;
+    return basePrice * discountFactor;
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Order {
+  #quantity;
+  #item;
+  constructor(quantity, item) {
+    this.#quantity = quantity;
+    this.#item = item;
+  }
+
+  get basePrice() {
+    return this.#quantity * this.#item.price;
+  }
+
+  get discountFactor() {
+    return this.basePrice > 1000 ? 0.95 : 0.98;
+  }
+
+  get price() {
+    return this.basePrice * this.discountFactor;
+  }
+}
+```
+
+</details>
+
+### 7.5 클래스 추출하기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+class Person {
+  #name;
+  #officeAreaCode;
+  #officeNumber;
+  constructor(name, areaCode, number) {
+    this.#name = name;
+    this.#officeAreaCode = areaCode;
+    this.#officeNumber = number;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  set name(arg) {
+    this.#name = arg;
+  }
+
+  get telephoneNumber() {
+    return `(${this.officeAreaCode}) ${this.officeNumber}`;
+  }
+
+  get officeAreaCode() {
+    return this.#officeAreaCode;
+  }
+
+  set officeAreaCode(arg) {
+    this.#officeAreaCode = arg;
+  }
+
+  get officeNumber() {
+    return this.#officeNumber;
+  }
+
+  set officeNumber(arg) {
+    this.#officeNumber = arg;
+  }
+}
+
+const person = new Person("준희", "010", "12345678");
+console.log(person.name);
+console.log(person.officeAreaCode);
+console.log(person.officeNumber);
+console.log(person.telephoneNumber);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Person {
+  #name;
+  #telephoneNumber;
+  constructor(name, areaCode, number) {
+    this.#name = name;
+    this.#telephoneNumber = new TelephoneNumber(areaCode, number);
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  set name(arg) {
+    this.#name = arg;
+  }
+
+  get telephoneNumber() {
+    return this.#telephoneNumber.toString;
+  }
+
+  get officeAreaCode() {
+    return this.#telephoneNumber.areaCode;
+  }
+
+  get officeNumber() {
+    return this.#telephoneNumber.number;
+  }
+}
+
+class TelephoneNumber {
+  #areaCode;
+  #number;
+  constructor(area, number) {
+    this.#areaCode = area;
+    this.#number = number;
+  }
+
+  get areaCode() {
+    return this.#areaCode;
+  }
+  set areaCode(arg) {
+    this.#areaCode = arg;
+  }
+
+  get number() {
+    return this.#number;
+  }
+  set number(arg) {
+    this.#number = arg;
+  }
+
+  get toString() {
+    return `(${this.#areaCode}) ${this.#number}`;
+  }
+}
+
+const telephoneNumber = new TelephoneNumber("010", "12345678");
+telephoneNumber.toString;
+
+const person = new Person("준희", "010", "12345678");
+console.log(person.name);
+console.log(person.officeAreaCode);
+console.log(person.officeNumber);
+console.log(person.telephoneNumber);
+
+/**
+ * 클래스 하나 당 하나의 책임만 가지고 있는 것이 좋다
+ */
+```
+
+</details>
+
+### 7.6 클래스 인라인하기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+export class TrackingInformation {
+  #shippingCompany;
+  #trackingNumber;
+  constructor(trackingNumber, shippingCompany) {
+    this.#trackingNumber = trackingNumber;
+    this.#shippingCompany = shippingCompany;
+  }
+
+  get shippingCompany() {
+    return this.#shippingCompany;
+  }
+
+  set shippingCompany(arg) {
+    this.#shippingCompany = arg;
+  }
+
+  get trackingNumber() {
+    return this.#trackingNumber;
+  }
+
+  set trackingNumber(arg) {
+    this.#trackingNumber = arg;
+  }
+
+  get display() {
+    return `${this.shippingCompany}: ${this.trackingNumber}`;
+  }
+}
+
+export class Shipment {
+  #trackingInformation;
+  constructor(trackingInformation) {
+    this.#trackingInformation = trackingInformation;
+  }
+
+  get trackingInfo() {
+    return this.#trackingInformation.display;
+  }
+
+  get trackingInformation() {
+    return this.#trackingInformation;
+  }
+
+  set trackingInformation(trackingInformation) {
+    this.#trackingInformation = trackingInformation;
+  }
+}
+
+const shipment = new Shipment(new TrackingInformation(999, "Maersk"));
+console.log(shipment.trackingInfo);
+
+shipment.trackingInformation.shippingCompany = "COSCO";
+console.log(shipment.trackingInfo);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+export class Shipment {
+  #trackingNumber;
+  #shippingCompany;
+
+  constructor(trackingNumber, shippingCompany) {
+    this.#trackingNumber = trackingNumber;
+    this.#shippingCompany = shippingCompany;
+  }
+
+  get shippingCompany() {
+    return this.#shippingCompany;
+  }
+
+  set shippingCompany(arg) {
+    this.#shippingCompany = arg;
+  }
+
+  get trackingNumber() {
+    return this.#trackingNumber;
+  }
+
+  set trackingNumber(arg) {
+    this.#trackingNumber = arg;
+  }
+
+  get display() {
+    return `${this.shippingCompany}: ${this.trackingNumber}`;
+  }
+}
+
+export class Shipment {
+  #trackingInformation;
+  constructor(trackingInformation) {
+    this.#trackingInformation = trackingInformation;
+  }
+
+  get trackingInfo() {
+    return this.#trackingInformation.display;
+  }
+
+  get trackingInformation() {
+    return this.#trackingInformation;
+  }
+
+  set trackingInformation(trackingInformation) {
+    this.#trackingInformation = trackingInformation;
+  }
+}
+
+const shipment = new Shipment(999, "Maersk");
+console.log(shipment.trackingInfo);
+
+shipment.trackingInformation.shippingCompany = "COSCO";
+console.log(shipment.trackingInfo);
+```
+
+</details>
+
+### 7.7 위임 숨기기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+class Person {
+  #name;
+  #department;
+  constructor(name, department) {
+    this.#name = name;
+    this.#department = department;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get department() {
+    return this.#department;
+  }
+
+  set department(arg) {
+    this.#department = arg;
+  }
+}
+
+export class Department {
+  #manager;
+  #chargeCode;
+  constructor(manager, chargeCode) {
+    this.#manager = manager;
+    this.#chargeCode = chargeCode;
+  }
+
+  get chargeCode() {
+    return this.#chargeCode;
+  }
+
+  set chargeCode(arg) {
+    this.#chargeCode = arg;
+  }
+
+  get manager() {
+    return this.#manager;
+  }
+
+  set manager(arg) {
+    this.#manager = arg;
+  }
+}
+
+const person = new Person("Tom", new Department("aManager", "999"));
+console.log(person.name);
+console.log(person.department.manager);
+console.log(person.department.chargeCode);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Person {
+  #name;
+  #department;
+  constructor(name, department) {
+    this.#name = name;
+    this.#department = department;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get manager() {
+    return this.#department.manager;
+  }
+
+  get chargeCode() {
+    return this.#department.chargeCode;
+  }
+
+  get department() {
+    return this.#department;
+  }
+
+  set department(arg) {
+    this.#department = arg;
+  }
+}
+
+export class Department {
+  #manager;
+  #chargeCode;
+  constructor(manager, chargeCode) {
+    this.#manager = manager;
+    this.#chargeCode = chargeCode;
+  }
+
+  get chargeCode() {
+    return this.#chargeCode;
+  }
+
+  set chargeCode(arg) {
+    this.#chargeCode = arg;
+  }
+
+  get manager() {
+    return this.#manager;
+  }
+
+  set manager(arg) {
+    this.#manager = arg;
+  }
+}
+
+const person = new Person("Tom", new Department("aManager", "999"));
+console.log(person.name);
+console.log(person.manager);
+console.log(person.chargeCode);
+
+/**
+ * 내부에사 사용해야 하는 정보(department)를 지나치게 노출한 케이스라고 볼 수 있다
+ * 외부에서 department를 신경쓰지 않아도 되도록 Department를 숨기는 리팩터링이다
+ */
+```
+
+</details>
+
+### 7.8 중개자 제거하기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+class Person {
+  #name;
+  #department;
+  constructor(name, department) {
+    this.#name = name;
+    this.#department = department;
+  }
+
+  get name() {
+    return this.#name;
+  }
+
+  get department() {
+    return this.#department;
+  }
+
+  set department(arg) {
+    this.#department = arg;
+  }
+}
+
+export class Department {
+  #manager;
+  #chargeCode;
+  constructor(manager, chargeCode) {
+    this.#manager = manager;
+    this.#chargeCode = chargeCode;
+  }
+
+  get chargeCode() {
+    return this.#chargeCode;
+  }
+
+  set chargeCode(arg) {
+    this.#chargeCode = arg;
+  }
+
+  get manager() {
+    return this.#manager;
+  }
+
+  set manager(arg) {
+    this.#manager = arg;
+  }
+}
+
+const person = new Person("Tom", new Department("aManager", "999"));
+console.log(person.name);
+console.log(person.department.manager);
+console.log(person.department.chargeCode);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Person {
+  #name;
+  #manager;
+  #chargeCode;
+  constructor(name, manager, chargeCode) {
+    this.#name = name;
+    this.#manager = manager;
+    this.#chargeCode = chargeCode;
+  }
+
+  get name() {
+    return this.#name;
+  }
+  get chargeCode() {
+    return this.#chargeCode;
+  }
+
+  set chargeCode(arg) {
+    this.#chargeCode = arg;
+  }
+
+  get manager() {
+    return this.#manager;
+  }
+
+  set manager(arg) {
+    this.#manager = arg;
+  }
+}
+
+const person = new Person("Tom", "aManager", "999");
+console.log(person.name);
+console.log(person.manager);
+console.log(person.chargeCode);
+
+/**
+ * 중개자 = 위임 = 컴포지션
+ * A 클래스 내부에서 B 클래스를 가지고 있는 것
+ * B라는 중개자를 통해서 A에서 원하는 정보를 얻는 형식
+ */
+
+/**
+ * extract 추출해서 여러개의 클래스로 나눌 것인지
+ * inline 제거해서 하나로 만들 것인지 고민해야 한다
+ */
+```
+
+</details>
+
+### 7.9 알고리즘 교체하기
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+function foundPerson(people) {
+  for (let i = 0; i < people.length; i++) {
+    if (people[i] === "Don") {
+      return "Don";
+    }
+    if (people[i] === "John") {
+      return "John";
+    }
+    if (people[i] === "Kent") {
+      return "Kent";
+    }
+  }
+  return "";
+}
+
+console.log(foundPerson(["John"]));
+console.log(foundPerson(["Don", "John"]));
+console.log(foundPerson(["Kent", "Don", "John"]));
+console.log(foundPerson(["Lisa", "Don", "Tom"]));
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function foundPerson(people) {
+  const candidates = ["Don", "John", "Kent"];
+  return people.find((p) => candidates.includes(p)) || "";
+}
+
+console.log(foundPerson(["John"]));
+console.log(foundPerson(["Don", "John"]));
+console.log(foundPerson(["Kent", "Don", "John"]));
+console.log(foundPerson(["Lisa", "Don", "Tom"]));
+
+/**
+ * 함수라는 것 또한 캡슐화이다
+ * 이름만 두고 내부 세부 사항은 숨겨두고, 이름만으로 유추하고 넘어갈 수 있도록 만들어주는 것이 좋다
  */
 ```
 
