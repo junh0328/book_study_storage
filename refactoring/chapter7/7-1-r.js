@@ -4,13 +4,10 @@
  */
 
 class Organization {
-  #name;
-  #country;
-  #data; //low data, 오리지널 원본 데이터
   constructor(data) {
-    this.#data = data;
-    this.#name = data.name;
-    this.#country = data.country;
+    this.data = data;
+    this.name = data.name;
+    this.country = data.country;
   }
 
   get name() {
@@ -35,8 +32,8 @@ class Organization {
 }
 
 const organization = new Organization({
-  name: "Acme Gooseberries",
-  country: "GB",
+  name: 'Acme Gooseberries',
+  country: 'GB',
 });
 
 console.log(organization.name);
