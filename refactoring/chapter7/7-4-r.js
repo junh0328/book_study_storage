@@ -1,13 +1,11 @@
 class Order {
-  #quantity;
-  #item;
   constructor(quantity, item) {
-    this.#quantity = quantity;
-    this.#item = item;
+    this.quantity = quantity;
+    this.item = item;
   }
 
   get basePrice() {
-    return this.#quantity * this.#item.price;
+    return this.quantity * this.item.price;
   }
 
   get discountFactor() {
