@@ -1,38 +1,36 @@
 class Person {
-  #name;
-  #courses;
   constructor(name) {
-    this.#name = name;
-    this.#courses = [];
+    this._name = name;
+    this._courses = [];
   }
 
   get name() {
-    return this.#name;
+    return this._name;
   }
 
   get courses() {
-    return this.#courses;
+    return this._courses;
   }
 
   set courses(courses) {
-    this.#courses = courses;
+    this._courses = courses;
   }
 }
 
 class Course {
-  #name;
-  #isAdvanced;
+  _name;
+  _isAdvanced;
   constructor(name, isAdvanced) {
-    this.#name = name;
-    this.#isAdvanced = isAdvanced;
+    this._name = name;
+    this._isAdvanced = isAdvanced;
   }
 
   get name() {
-    return this.#name;
+    return this._name;
   }
 
   get isAdvanced() {
-    return this.#isAdvanced;
+    return this._isAdvanced;
   }
 }
 

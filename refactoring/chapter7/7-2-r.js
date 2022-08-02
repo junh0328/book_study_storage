@@ -18,12 +18,8 @@ class Person {
 
   removeCourse(course, runIfAbsent) {
     const index = this.courses.indexOf(course);
-    if (index === -1) {
-      runIfAbsent();
-      return;
-    }
-
-    this.courses.splice(index, 1);
+    if (index === -1) runIfAbsent();
+    else this.courses.splice(index, 1);
   }
 }
 
@@ -42,16 +38,16 @@ class Course {
   }
 }
 
-const junhee = new Person('준희');
-const course = new Course('래팩터링', true);
+const junhee = new Person("준희");
+const course = new Course("래팩터링", true);
 junhee.addCourse(course);
 console.log(junhee.courses.length);
 junhee.removeCourse(course, () => {
-  console.log('해당 코스는 없다');
+  console.log("해당 코스는 없다");
 });
 console.log(junhee.courses.length);
 junhee.removeCourse(course, () => {
-  console.log('해당 코스는 없다');
+  console.log("해당 코스는 없다");
 });
 
 /**

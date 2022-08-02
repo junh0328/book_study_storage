@@ -1,19 +1,16 @@
 class Person {
-  #name;
-  #officeAreaCode;
-  #officeNumber;
   constructor(name, areaCode, number) {
-    this.#name = name;
-    this.#officeAreaCode = areaCode;
-    this.#officeNumber = number;
+    this._name = name;
+    this._officeAreaCode = areaCode;
+    this._officeNumber = number;
   }
 
   get name() {
-    return this.#name;
+    return this._name;
   }
 
   set name(arg) {
-    this.#name = arg;
+    this._name = arg;
   }
 
   get telephoneNumber() {
@@ -21,19 +18,19 @@ class Person {
   }
 
   get officeAreaCode() {
-    return this.#officeAreaCode;
+    return this._officeAreaCode;
   }
 
   set officeAreaCode(arg) {
-    this.#officeAreaCode = arg;
+    this._officeAreaCode = arg;
   }
 
   get officeNumber() {
-    return this.#officeNumber;
+    return this._officeNumber;
   }
 
   set officeNumber(arg) {
-    this.#officeNumber = arg;
+    this._officeNumber = arg;
   }
 }
 
