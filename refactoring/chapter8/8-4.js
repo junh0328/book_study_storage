@@ -1,3 +1,7 @@
+/**
+ *   outStream.write(`<p>location: ${photo.location}</p>\n`); 를 외부에서 사용해야 하는 경우
+ */
+
 function renderPerson(outStream, person) {
   outStream.write(`<p>${person.name}</p>\n`);
   renderPhoto(outStream, person.photo);
@@ -8,9 +12,9 @@ function listRecentPhotos(outStream, photos) {
   photos
     .filter((p) => p.date > recentDateCutoff())
     .forEach((p) => {
-      outStream.write('<div>\n');
+      outStream.write("<div>\n");
       emitPhotoData(outStream, p);
-      outStream.write('</div>\n');
+      outStream.write("</div>\n");
     });
 }
 
@@ -21,7 +25,7 @@ function emitPhotoData(outStream, photo) {
 }
 
 function renderPhoto(outStream, aPhoto) {
-  outStream.write('');
+  outStream.write("");
 }
 
 function recentDateCutoff() {

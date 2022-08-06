@@ -12,6 +12,7 @@
 - [4. 테스트 구축하기](#4-테스트-구축하기)
 - [6. 기본적인 리팩터링](#6-기본적인-리팩터링)
 - [7. 캡슐화](#7-캡슐화)
+- [8. 기능 이동](#8-기능-이동)
 
 ## 1. 리팩터링 첫 번째 예시
 
@@ -2665,7 +2666,499 @@ console.log(foundPerson(["Lisa", "Don", "Tom"]));
 
 </details>
 
+## 8. 기능 이동
+
+### 8.1 함수 옮기기
+
+**배경**
+
+좋은 소프트웨어 설계의 핵심은 모듈화가 얼마나 잘 되어 있느냐를 뜻하는 모듈성(modularity)이다. 모듈성이란 프로그램의 어딘가를 수정하려 할 때 해당 기능과 깊이 관련된 작은 일부만 이해해도 가능하게 해주는 능력이다.
+
+모듈성을 높이려면 서로 연관된 요소들을 함께 묶고, 요소 사이의 연결 관계를 쉽게 찾고 이해할 수 있도록 해야 한다. 하지만 프로그램을 얼마나 잘 이해했느냐에 따라 구체적인 방법이 달라질 수 있다.
+
+모든 함수는 어떤 컨텍스트 ㅇ나에 존재한다. 객체 지향 프로그래밍의 핵심 모듈화 컨텍스트는 클래스다. 또한 함수를 다른 함수에 중첩시켜도 또 다른 공통 컨텍스트를 만들게 된다.
+
+함수를 옮길지 말지를 정하기란 쉽지 않다. 그럴 땐 대상 함수의 현재 컨텍스트와 후보 컨텍스트를 둘러보면 도움이 된다.
+
+대상 함수를 호출하는 함수들은 무엇인지, 대상 함수가 호출하는 함수들은 또 무엇이 있는지, 대상 함수가 사용하는 데이터는 무엇인지를 살펴봐야 한다.
+
+경험상 함수들을 한 컨텍스트에 두고 작업해보는 것도 괜찮다. 그곳이 얼마나 적합한지는 차차 깨달아갈 것임을 알고 있고, 잘 맞지 않다고 판단되면 위치는 언제든 옮길 수 있으니 말이다.
+
+**절차**
+
+1. 선택한 함수가 현재 컨텍스트에서 사용 중인 모든 프로그램 요소를 살펴본다. 이 요소들 중에도 함께 옮겨야 할 게 있는지 고민해본다
+2. 선택한 함수가 다형 메서드인지 확인한다
+3. 선택한 함수를 타깃 컨텍스트로 복사한다. 타깃 함수가 새로운 터전에 잘 자리 잡도록 다듬는다
+
+- 이때 원래의 함수를 소스 함수(source function) 라 하고 복사해서 만든 새로운 함수를 타깃 함수(target function)라 한다.
+
+4. 정적 분석을 수행한다
+5. 소스 컨텍스트에서 타깃 함수를 참조할 방법을 찾아 반영한다
+6. 소스 함수를 타깃 함수의 위임 함수가 되도록 수정한다
+7. 테스트한다
+8. 소스 함수를 인라인할지 고민해본다.
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+function trackSummary(points) {
+  const totalTime = calculateTime();
+  const totalDistance = calculateDistance();
+  const pace = totalTime / 60 / totalDistance;
+  return {
+    time: totalTime,
+    distance: totalDistance,
+    pace: pace,
+  };
+
+  function calculateDistance() {
+    let result = 0;
+    for (let i = 1; i < points.length; i++) {
+      result += distance(points[i - 1], points[i]);
+    }
+    return result;
+  }
+
+  function distance(p1, p2) {
+    // 포뮬라: http://www.movable-type.co.uk/scripts/latlong.html
+    const EARTH_RADIUS = 3959; // in miles
+    const dLat = radians(p2.lat) - radians(p1.lat);
+    const dLon = radians(p2.lon) - radians(p1.lon);
+    const a =
+      Math.pow(Math.sin(dLat / 2), 2) +
+      Math.cos(radians(p2.lat)) *
+        Math.cos(radians(p1.lat)) *
+        Math.pow(Math.sin(dLon / 2), 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return EARTH_RADIUS * c;
+  }
+
+  function radians(degrees) {
+    return (degrees * Math.PI) / 180;
+  }
+
+  function calculateTime() {
+    return 10000;
+  }
+}
+
+const newYork = {
+  lat: 40.73061,
+  lon: -73.935242,
+};
+
+const tokyo = {
+  lat: 35.652832,
+  lon: 139.839478,
+};
+
+const summary = trackSummary([newYork, tokyo]);
+console.log(summary);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+/**
+ * 순수하게 함수로만 구성된 로직
+ *
+ * trackSummary 라는 함수가 다른 내부 함수를 감싼 형태였지만,
+ * 실질적으로 응집도(서로를 필요로 하는 정도)가 떨어졌다.
+ *
+ */
+
+function trackSummary(points) {
+  const time = calculateTime();
+  const distance = calculateDistance(points);
+  const pace = time / 60 / distance;
+
+  return { time, distance, pace };
+}
+function calculateTime() {
+  return 10000;
+}
+
+function calculateDistance(points) {
+  let result = 0;
+  for (let i = 1; i < points.length; i++) {
+    result += distance(points[i - 1], points[i]);
+  }
+  return result;
+}
+
+function radians(degrees) {
+  return (degrees * Math.PI) / 180;
+}
+
+function distance(p1, p2) {
+  // 포뮬라: http://www.movable-type.co.uk/scripts/latlong.html
+  const EARTH_RADIUS = 3959; // in miles
+  const dLat = radians(p2.lat) - radians(p1.lat);
+  const dLon = radians(p2.lon) - radians(p1.lon);
+  const a =
+    Math.pow(Math.sin(dLat / 2), 2) +
+    Math.cos(radians(p2.lat)) *
+      Math.cos(radians(p1.lat)) *
+      Math.pow(Math.sin(dLon / 2), 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS * c;
+}
+
+const newYork = {
+  lat: 40.73061,
+  lon: -73.935242,
+};
+
+const tokyo = {
+  lat: 35.652832,
+  lon: 139.839478,
+};
+
+const summary = trackSummary([newYork, tokyo]);
+console.log(summary);
+```
+
+</details>
+
+### 8.2 필드 옮기기
+
+**배경**
+
+프로그램의 상당 부분이 동작을 구현하는 코드로 이뤄지지만 프로그램의 진짜 힘은 데이터 구조에서 나온다. 주어진 문제에 적합한 데이터 구조를 활용하면 동작 코드는 자연스럽게 단순하고 직관적으로 짜여진다.
+
+반면 데이터 구조를 잘못 선택하면 아귀가 맞지 않는 데이터를 다루기 위한 코드로 범벅이 된다. 이해하기 어려운 코드가 만들어지는 데서 끝나지 않고, 데이터 구조 자체도 그 프로그램이 어떤 일을 하는지 파악하기 어렵게 한다.
+
+그래서 데이터 구조가 중요하다. 하지만 훌륭한 프로그램이 갖춰야 할 다른 요인들과 마찬가지로, 제대로 하기가 어렵다. 가장 적합한 데이터 구조를 알아내고자 프로젝트 초기에 분석을 해 본 결과, 경험과 도메인 주도 설계 같은 기술이 내 능력을 개선해줌을 알아냈다.
+
+**현재 데이터 구조가 적절하지 않음을 꺠닫게 되면 곧바로 수정해야 한다.** 고치지 않고 데이터 구조에 남겨진 흠들은 우리 머릿속을 혼란스럽게 하고 훗날 작성하게 될 코드를 더욱 복잡하게 만들어버린다.
+
+예컨대 함수에 어떤 레코드를 넘길 때마다 또 다른 레코드의 필드도 함께 넘기고 있다면 데이터 위치를 옮겨야 할 것이다. 함수에 항상 함꼐 건네지는 데이터 조각들은 상호 관계가 명확하게 드러나도록 한 레코드에 담는 게 가장 좋다.
+
+**한 레코드를 변경하려 할 대 다른 레코드의 필드까지 변경해야 한다면 필드의 위치가 잘못되었다는 신호다.**
+
+**구조체 여러 개에 정의된 똑같은 필드들을 갱신해야 한다면 한 번만 갱신해도 되는 다른 위치로 옮기라는 신호다.**
+
+지금까지의 설명에서 레코드라는 용어를 썼지만, 레코드 대신 클래스나 객체가 와도 똑같다. 클래스는 함수가 곁들여진 레코드라 할 수 있으며, 다른 데이터와 마찬가지로 건강하게 관리돼야 한다.
+
+클래스의 데이터들은 접근자 메서드들 뒤에 감춰져(캡슐화되어) 있으므로 클래스에 곁들여진 함수들은 데이터를 이리저리 옮기는 작업을 쉽게 해준다.
+
+**절차**
+
+1. 소스 필드가 캡슐화되어 있지 않다면 캡슐화한다
+2. 테스트한다
+3. 타깃 객체에 필드와 접근자 메서드를 생성한다
+4. 정적 검사를 수행한다
+5. 소스 객체에서 타깃 객체를 참조할 수 있는지 확인한다
+6. 접근자들이 타깃 필드를 사용하도록 수정한다
+7. 테스트한다
+8. 소스 필드를 제거한다
+9. 테스트한다
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+class Customer {
+  constructor(name, discountRate) {
+    this.name = name;
+    this.discountRate = discountRate;
+    this.contract = new CustomerContract(this.dateToday());
+  }
+
+  get discountRate() {
+    return this.discountRate;
+  }
+
+  becomePreferred() {
+    this.discountRate += 0.03;
+    // 다른 코드들이 있음...
+  }
+
+  applyDiscount(amount) {
+    return amount.subtract(amount.multiply(this.discountRate));
+  }
+
+  dateToday() {
+    return new Date();
+  }
+}
+
+class CustomerContract {
+  constructor(startDate) {
+    this.startDate = startDate;
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+class Customer {
+  constructor(name, discountRate) {
+    this.name = name;
+    this.contract = new CustomerContract(this.dateToday(), discountRate);
+  }
+
+  becomePreferred() {
+    this.contract.discountRate += 0.03;
+    // 다른 코드들이 있음...
+  }
+
+  applyDiscount(amount) {
+    return amount.subtract(amount.multiply(this.contract.discountRate));
+  }
+
+  dateToday() {
+    return new Date();
+  }
+}
+
+class CustomerContract {
+  constructor(startDate, discountRate) {
+    this.startDate = startDate;
+    this.discountRate = discountRate;
+  }
+
+  get discountRate() {
+    return this.discountRate;
+  }
+
+  set discountRate(value) {
+    this.discountRate = value;
+  }
+}
+```
+
+</details>
+
+### 8.3 문장을 함수로 옮기기
+
+**배경**
+
+중복 제거는 코드를 건강하게 관리하는 가장 효과적인 방법 중 하나다. 예컨대 특정 함수를 호출하는 코드가 나올 때마다 그 앞이나 뒤에서 똑같은 코드가 추가로 실행되는 모습을 보면, 나는 그 반복되는 부분을 피호출 함수로 합치는 방법을 궁리한다.
+
+이렇게 해두면 추후 반복되는 부분에서 무언가 수정할 일이 생겼을 때 단 한곳만 수정하면 된다.
+
+문장들을 함수로 옮기려면 그 문장들이 피호출 함수의 일부라는 확신이 있어야 한다. 피호출 함수와 한 몸은 아니지만 여전히 함께 호출돼야 하는 경우라면 단순히 해당 문장들과 피호출 함수를 통째로 또 하나의 함수로 추출한다.
+
+**절차**
+
+1. 반복 코드가 함수 호출 부분과 멀리 떨어져 있다면 문장 슬라이드하기를 적용해 근처로 옮긴다
+2. 타깃 함수를 호출하는 곳이 한 곳뿐이면, 단순히 소스 위치에서 해당 코드를 잘라내어 피호출 함수로 복사하고 테스트한다. 이 경우라면 나머지 단계는 무시한다
+3. 호출자가 둘 이상이면 호출자 중 하나에서 '타깃 함수 호출 부분과 그 함수로 옮기려는 문장들을 함께' 다른 함수로 추출한다. 추출한 함수에 기억하기 쉬운 임시 이름을 지어준다
+4. 다른 호출자 모두가 방금 추출한 함수를 사용하도록 수정한다. 하나씩 수정할 때마다 테스트한다
+5. 모든 호출자가 새로운 함수를 사용하게 되면 원래 함수를 새로운 함수 안으로 인라인한 후 원래 함수를 제거한다
+6. 새로운 함수의 이름을 원래 함수의 이름으로 바꿔준다
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+function renderPerson(person) {
+  const result = [];
+  result.push(`<p>${person.name}</p>`);
+  result.push(renderPhoto(person.photo));
+  result.push(`<p>title: ${person.photo.title}</p>`);
+  result.push(emitPhotoData(person.photo));
+  return result.join("\n");
+}
+
+function photoDiv(p) {
+  return ["<div>", `<p>title: ${p.title}</p>`, emitPhotoData(p), "</div>"].join(
+    "\n"
+  );
+}
+
+function emitPhotoData(aPhoto) {
+  const result = [];
+  result.push(`<p>location: ${aPhoto.location}</p>`);
+  result.push(`<p>date: ${aPhoto.date.toDateString()}</p>`);
+  return result.join("\n");
+}
+
+function renderPhoto(aPhoto) {
+  return "";
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function renderPerson(person) {
+  const result = [];
+  result.push(`<p>${person.name}</p>`);
+  result.push(renderPhoto(person.photo));
+  result.push(emitPhotoData(person.photo));
+  return result.join("\n");
+}
+
+function photoDiv(photo) {
+  return ["<div>", emitPhotoData(photo), "</div>"].join("\n");
+}
+
+function emitPhotoData(photo) {
+  const result = [];
+  result.push(`<p>title: ${photo.photo.title}</p>`);
+  result.push(`<p>location: ${photo.location}</p>`);
+  result.push(`<p>date: ${photo.date.toDateString()}</p>`);
+  return result.join("\n");
+}
+
+function renderPhoto(photo) {
+  return "";
+}
+```
+
+</details>
+
+### 8.4 문장을 호출한 곳으로 옮기기
+
+**배경**
+
+함수는 프로그래머가 쌓아 올리는 추상화의 기본 빌딩 블록이다. **그런데 추상화라는 것이 그 경계를 항상 올바르게 긋기가 만만치 않다.**
+
+그래서 코드베이스의 기능 범위가 달라지면 추상화의 경계또 움직이게 된다. 함수 관점에서 생각해보면, 초기에는 응집도 높고 한가지 일만 수행하던 함수가 어느새 둘 이상의 다른 일을 수행하게 바뀔 수 있다는 뜻이다.
+
+예컨대 여러 곳에서 사용하던 기능이 일부 호출자에게는 다르게 동작하도록 바뀌어야 한다면 이런 일(**초기에는 응집도 높고 한가지 일만 수행하던 함수가 어느새 둘 이상의 다른 일을 수행하게 바뀔 수 있다**)이 벌어진다.
+
+그렇다면 개발자는 달라진 동작을 함수에서 꺼내 해당 호출자로 옮겨야 한다.
+
+**절차**
+
+1. 호출자가 한두 개뿐이고 피호출 함수도 간단한 단순한 상황이면, 피호출 함수의 처음 줄을 잘라내어 호출자로 복사해 넣는다. 테스트만 통과하면 이번 리팩터링을 여기서 끝이다
+2. 더 복잡한 상황에서는, 이동하지 '않길' 원하는 모든 문장을 함수로 추출한 다음 검색하기 쉬운 임시 이름을 지어준다
+3. 원래 함수를 인라인한다
+4. 추출된 함수의 이름을 원래 함수의 이름으로 변경한다
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+/**
+ *   outStream.write(`<p>location: ${photo.location}</p>\n`); 를 외부에서 사용해야 하는 경우
+ */
+
+function renderPerson(outStream, person) {
+  outStream.write(`<p>${person.name}</p>\n`);
+  renderPhoto(outStream, person.photo);
+  emitPhotoData(outStream, person.photo);
+}
+
+function listRecentPhotos(outStream, photos) {
+  photos
+    .filter((p) => p.date > recentDateCutoff())
+    .forEach((p) => {
+      outStream.write("<div>\n");
+      emitPhotoData(outStream, p);
+      outStream.write("</div>\n");
+    });
+}
+
+function emitPhotoData(outStream, photo) {
+  outStream.write(`<p>title: ${photo.title}</p>\n`);
+  outStream.write(`<p>date: ${photo.date.toDateString()}</p>\n`);
+  outStream.write(`<p>location: ${photo.location}</p>\n`);
+}
+
+function renderPhoto(outStream, aPhoto) {
+  outStream.write("");
+}
+
+function recentDateCutoff() {
+  //7 days ago.
+  return new Date().setDate(new Date().getDate() - 7);
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+function renderPerson(outStream, person) {
+  outStream.write(`<p>${person.name}</p>\n`);
+  renderPhoto(outStream, person.photo);
+  emitPhotoData(outStream, person.photo);
+  outStream.write(`<p>location: ${photo.location}</p>\n`);
+}
+
+function listRecentPhotos(outStream, photos) {
+  photos
+    .filter((p) => p.date > recentDateCutoff())
+    .forEach((p) => {
+      outStream.write("<div>\n");
+      emitPhotoData(outStream, p);
+      outStream.write("</div>\n");
+    });
+}
+
+function emitPhotoData(outStream, photo) {
+  outStream.write(`<p>title: ${photo.title}</p>\n`);
+  outStream.write(`<p>date: ${photo.date.toDateString()}</p>\n`);
+}
+
+function renderPhoto(outStream, aPhoto) {
+  outStream.write("");
+}
+
+function recentDateCutoff() {
+  //7 days ago.
+  return new Date().setDate(new Date().getDate() - 7);
+}
+```
+
+</details>
+
+### 8.5 인라인 코드를 함수 호출로 바꾸기
+
+**배경**
+
+함수는 여러 동작을 하나로 묶어준다. 그리고 함수의 이름이 코드의 동작 방식보다 목적을 말해주기 때문에 함수를 활용하면 코드를 이해하기가 쉬워진다. 함수는 중복을 없애는 데도 효과적이다.
+
+이미 존재하는 함수와 똑같은 일을 하는 인라인 코드를 발견하면 보통은 해당 코드를 함수 호출로 대체하길 원할 것이다. 예외가 있다면, 순전히 우연히 비슷한 코드가 만들어졌을 때뿐이다. **즉, 기존 함수의 코드를 수정하더라도 인라인 코드의 동작은 바뀌지 않아야 할 때뿐이다.**
+
+**절차**
+
+1. 인라인 코드를 함수 호출로 대체한다
+2. 테스트한다
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+let appliesToMass = false;
+for (const s of states) {
+  if (s === "MA") appliesToMass = true;
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+let appliesToMass2 = states.includes("MA");
+```
+
+</details>
+
 ## 마크업 복사용
+
+**배경**
+
+**절차**
 
 <details>
 <summary>리팩터링 이전 코드</summary>
