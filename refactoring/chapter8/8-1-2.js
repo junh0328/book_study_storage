@@ -1,4 +1,4 @@
-export class Account {
+class Account {
   constructor(accountType, daysOverdrawn) {
     this.type = accountType;
     this._daysOverdrawn = daysOverdrawn;
@@ -23,11 +23,11 @@ export class Account {
   }
 }
 
-export class AccountType {
+class AccountType {
   constructor(type) {
     this._type = type;
   }
   get isPremium() {
-    return this._type === 'Premium';
+    return this._type === "Premium";
   }
 }

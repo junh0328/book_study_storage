@@ -1,4 +1,4 @@
-export class Customer {
+class Customer {
   #name;
   #discountRate;
   #contract;
