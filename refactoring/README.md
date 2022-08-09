@@ -3154,6 +3154,264 @@ let appliesToMass2 = states.includes("MA");
 
 </details>
 
+### 8.6 문장 슬라이드하기
+
+**배경**
+
+관련된 코드들이 가까이 모여 있다면 이해하기가 더 쉽다. 예컨대 하나의 데이터 구조를 이용하는 문장들은 한데 모여 있어야 좋다.
+
+실제로 나는 문장 슬라이드하기 리팩터링으로 이런 코드들을 한데 모아둔다. 가장 흔한 사례는 변수를 선언하고 사용할 때다. 모든 변수 선언을 함수 첫머리에 모아두는 사람도 있는데, 나는 변수를 처음 사용할 때 선언하는 스타일을 선호한다.
+
+**절차**
+
+1. 코드 조각을 이동할 목표 위치를 찾는다. 코드 조각의 원래 위치와 목표 위치 사이의 코드들을 훑어보면서, 조각을 모으고 나면 동작이 달라지는 코드가 있는지 살핀다. 다음과 같은 간섭이 있다면 이 리팩터링을 포기한다.
+
+- 코드 조각에서 참조하는 요소를 선언하는 문장 앞으로는 이동할 수 없다
+- 코드 조각을 참조하는 요소의 뒤로는 이동할 수 없다
+- 코드 조각에서 참조하는 요소를 수정하는 문장을 건너뛰어 이동할 수 없다
+- 코드 조각이 수정하는 요소를 참조하는 요소를 건너뛰어 이동할 수 없다
+
+2. 코드 조각을 원래 위치에서 잘라내어 목표 위치에 붙여 넣는다
+3. 테스트한다
+
+코드 조각을 슬라이드할 때는 두 가지를 확인해야 한다. `1. 무엇을 슬라이드할지`와 `2. 슬라이드할 수 있는지 여부`다. 무엇을 슬라이드할지는 맥락과 관련이 깊다.
+
+가장 단순하게는, 요소를 선언하는 곳과 사용하는 곳을 가까이 두기를 좋아하는 나는 선언 코드를 슬라이드하여 처음 사용하는 곳까지 끌어내리는 일을 자주 한다.
+
+코드 조각을 슬라이드하기로 했다면, 다음 단계로는 그 일이 실제로 가능한지를 점검해야 한다. 그러려면 슬라이드할 코드 자체와 그 코드가 건너뛰어야 할 코드를 모두 살펴야 한다.
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+// 예제 1
+const pricingPlan = retrievePricingPlan();
+const order = retreiveOrder();
+let charge;
+const chargePerUnit = pricingPlan.unit;
+
+// 예제 2
+function someFunc() {
+  let result;
+  if (availableResources.length === 0) {
+    result = createResource();
+    allocatedResources.push(result);
+  } else {
+    result = availableResources.pop();
+    allocatedResources.push(result);
+  }
+  return result;
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+// 예제 1
+const pricingPlan = retrievePricingPlan();
+const chargePerUnit = pricingPlan.unit;
+const order = retreiveOrder();
+let charge;
+
+// 예제 2
+function someFunc() {
+  const result =
+    availableResources.length === 0
+      ? (result = createResource())
+      : (result = availableResources.pop());
+
+  allocatedResources.push(result);
+  return result;
+}
+```
+
+</details>
+
+### 8.7 반복문 쪼개기
+
+**배경**
+
+종종 반복문 하나에서 두 가지 일을 수행하는 모습을 보게 된다. 그저 두 일을 한꺼번에 처리할 수 있다는 이유에서 말이다.
+
+하지만 이렇게 하면 반복문을 수정해야 할 때마다 두 가지 일 모두를 잘 이해하고 진행해야 한다. 반대로 각각의 반복문으로 분리해두면 수정할 동작 하나만 이해하면 된다.
+
+반복문을 두 번 실행해야 하므로 이 리팩터링을 불편해하는 프로그래머도 많다. 다시 한번 이야기하지만, **리팩터링과 최적화를 구분하자.**
+
+최적화는 코드를 깔끔히 정리한 이후에 수행하자. 반복문을 두 번 실행하는 게 병목이라 밝혀지면 그때 다시 하나로 합치기는 식은 죽 먹기다.
+
+하지만 심지어 긴 리스트를 반복하더라도 병목으로 이어지는 경우는 매우 드물다. 오히려 반복문 쪼개기가 다른 더 강력한 최적화를 적용할 수 있는 길을 열어주기도 한다.
+
+**절차**
+
+1. 반복문을 복제해 두 개로 만든다
+2. 반복문이 중복되어 생기는 부수효과를 파악해서 제거한다
+3. 테스트한다
+4. 완료됐으면, 각 반복문을 함수로 추출할지 고민해본다
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+/* 반복문 쪼개기 */
+
+function reportYoungestAgeAndTotalSalary(people) {
+  function youngestAge() {
+    let youngest = people[0] ? people[0].age : Infinity;
+
+    for (const p of people) {
+      if (p.age < youngest) youngest = p.age;
+    }
+    return youngest;
+  }
+
+  function youngestAge2() {
+    return Math.min(...people.map((p) => p.age));
+  }
+
+  function totalSalary() {
+    let totalSalary = 0;
+
+    for (const p of people) {
+      totalSalary += p.salary;
+    }
+    return totalSalary;
+  }
+
+  function totalSalary2() {
+    return people.reduce((total, p) => (total += p.salary), 0);
+  }
+
+  return `youngestAge: ${youngestAge()}, totalSalary: ${totalSalary()}`;
+}
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+/* 반복문 쪼개기 */
+
+function reportYoungestAgeAndTotalSalary(people) {
+  function youngestAge() {
+    let youngest = people[0] ? people[0].age : Infinity;
+
+    for (const p of people) {
+      if (p.age < youngest) youngest = p.age;
+    }
+    return youngest;
+  }
+
+  function youngestAge2() {
+    return Math.min(...people.map((p) => p.age));
+  }
+
+  function totalSalary() {
+    let totalSalary = 0;
+
+    for (const p of people) {
+      totalSalary += p.salary;
+    }
+    return totalSalary;
+  }
+
+  function totalSalary2() {
+    return people.reduce((total, p) => (total += p.salary), 0);
+  }
+
+  return `youngestAge: ${youngestAge()}, totalSalary: ${totalSalary()}`;
+}
+```
+
+</details>
+
+### 8.8 반복문을 파이프라인으로 바꾸기
+
+**배경**
+
+프로그래머 대부분이 그렇듯 나도 객체 컬렉션을 순회할 때 반복문을 사용하라고 배웠다. 하지만 언어는 계속해서 더 나은 구조를 제공하는 쪽으로 발전해왔다.
+
+예컨데 이번 이야기의 주인공인 컬렉션 파이프라인을 이용하면 처리 과정을 일련의 연산으로 표현할 수 있다.
+
+이때 각 연산은 컬렉션을 입력받아 다른 컬렉션을 내뱉는다.
+
+**절차**
+
+1. 반복문에서 사용하는 컬렉션을 가리키는 변수를 하나 만든다
+2. 반복문의 첫 줄부터 시작해서, 각각의 단위 행위를 적절한 파이프라인 연산으로 대체한다. 이때 컬렉션 파이프라인 연산은 1에서 만든 반복문 컬렉션 변수에서 시작하여, 이전 연산의 결과를 기초로 연쇄적으로 수행된다. 하나를 대체할 때마다 테스트한다
+3. 반복문의 모든 동작을 대체했다면 반복문 자체를 지운다
+
+<details>
+<summary>리팩터링 이전 코드</summary>
+
+```js
+function acquireData(input) {
+  const lines = input.split("\n");
+  let firstLine = true;
+  const result = [];
+  for (const line of lines) {
+    if (firstLine) {
+      firstLine = false;
+      continue;
+    }
+    if (line.trim() === "") continue;
+    const record = line.split(",");
+    if (record[1].trim() === "India") {
+      result.push({ city: record[0].trim(), phone: record[2].trim() });
+    }
+  }
+  return result;
+}
+
+const input = `office, country, telephone\n
+Chicago, USA, +1 312 373 1000\n
+Beijing, China, +86 4008 900 505\n
+Bangalore, India, +91 80 4064 9570\n
+Porto Alegre, Brazil, +55 51 3079 3550\n
+Chennai, India, +91 44 660 44766`;
+const result = acquireData(input);
+console.log(result);
+```
+
+</details>
+
+<details>
+<summary>리팩터링 이후 코드</summary>
+
+```js
+/**
+ * 반복문을 파이프라인으로 바꾸기
+ */
+
+function acquireData(input) {
+  return input
+    .split("\n")
+    .splice(1)
+    .filter((line) => line.trim() !== "")
+    .map((line) => line.split(","))
+    .filter((line) => line[1].trim() === "India")
+    .map((line) => ({
+      city: line[0].trim(),
+      phone: line[2].trim(),
+    }));
+}
+
+const input = `office, country, telephone\n
+Chicago, USA, +1 312 373 1000\n
+Beijing, China, +86 4008 900 505\n
+Bangalore, India, +91 80 4064 9570\n
+Porto Alegre, Brazil, +55 51 3079 3550\n
+Chennai, India, +91 44 660 44766`;
+const result = acquireData(input);
+console.log(result);
+```
+
+</details>
+
 ## 마크업 복사용
 
 **배경**
