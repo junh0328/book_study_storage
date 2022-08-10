@@ -770,11 +770,7 @@ export function printOwing(invoice) {
 
   // record due date
   const today = new Date();
-  invoice.dueDate = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() + 30
-  );
+  invoice.dueDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30);
 
   //print details
   console.log(`name: ${invoice.customer}`);
@@ -814,11 +810,7 @@ function calculateOutstanding(invoice) {
 
 function recordDueDate(invoice) {
   const today = new Date();
-  invoice.dueDate = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() + 30
-  );
+  invoice.dueDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30);
 }
 
 function printDetails(invoice, outstanding) {
@@ -1093,9 +1085,7 @@ export default class Book {
   }
 
   hasReservation(customer) {
-    return this.#reservations.some(
-      (reservedCustomer) => reservedCustomer.id === customer.id
-    );
+    return this.#reservations.some((reservedCustomer) => reservedCustomer.id === customer.id);
   }
 }
 ```
@@ -1132,9 +1122,7 @@ export default class Book {
   }
 
   hasReservation(customer) {
-    return this.#reservations.some(
-      (reservedCustomer) => reservedCustomer.id === customer.id
-    );
+    return this.#reservations.some((reservedCustomer) => reservedCustomer.id === customer.id);
   }
 }
 
@@ -1244,11 +1232,7 @@ const operationPlan = {
   temperatureCeiling: 53,
 };
 
-readingsOutsideRange(
-  station,
-  operationPlan.temperatureFloor,
-  operationPlan.temperatureCeiling
-);
+readingsOutsideRange(station, operationPlan.temperatureFloor, operationPlan.temperatureCeiling);
 ```
 
 </details>
@@ -1686,9 +1670,7 @@ function priceOrder(product, quantity, shippingMethod) {
 
   // 할인 가격
   const discount =
-    Math.max(quantity - product.discountThreshold, 0) *
-    product.basePrice *
-    product.discountRate;
+    Math.max(quantity - product.discountThreshold, 0) * product.basePrice * product.discountRate;
 
   // 개별 배송비
   const shippingPerCase =
@@ -1736,11 +1718,7 @@ console.log(price);
 function priceOrder(product, quantity, shippingMethod) {
   const basePrice = calculateBasePrice(product, quantity);
   const discount = calcualteDiscountedPrice(product, quantity);
-  const shippingCost = calculateShippingCost(
-    basePrice,
-    quantity,
-    shippingMethod
-  );
+  const shippingCost = calculateShippingCost(basePrice, quantity, shippingMethod);
 
   return basePrice - discount + shippingCost;
 }
@@ -1751,9 +1729,7 @@ function calculateBasePrice(product, quantity) {
 
 function calcualteDiscountedPrice(product, quantity) {
   return (
-    Math.max(quantity - product.discountThreshold, 0) *
-    product.basePrice *
-    product.discountRate
+    Math.max(quantity - product.discountThreshold, 0) * product.basePrice * product.discountRate
   );
 }
 
@@ -2676,7 +2652,7 @@ console.log(foundPerson(["Lisa", "Don", "Tom"]));
 
 모듈성을 높이려면 서로 연관된 요소들을 함께 묶고, 요소 사이의 연결 관계를 쉽게 찾고 이해할 수 있도록 해야 한다. 하지만 프로그램을 얼마나 잘 이해했느냐에 따라 구체적인 방법이 달라질 수 있다.
 
-모든 함수는 어떤 컨텍스트 ㅇ나에 존재한다. 객체 지향 프로그래밍의 핵심 모듈화 컨텍스트는 클래스다. 또한 함수를 다른 함수에 중첩시켜도 또 다른 공통 컨텍스트를 만들게 된다.
+모든 함수는 어떤 컨텍스트에나 존재한다. 객체 지향 프로그래밍의 핵심 모듈화 컨텍스트는 클래스다. 또한 함수를 다른 함수에 중첩시켜도 또 다른 공통 컨텍스트를 만들게 된다.
 
 함수를 옮길지 말지를 정하기란 쉽지 않다. 그럴 땐 대상 함수의 현재 컨텍스트와 후보 컨텍스트를 둘러보면 도움이 된다.
 
@@ -2727,9 +2703,7 @@ function trackSummary(points) {
     const dLon = radians(p2.lon) - radians(p1.lon);
     const a =
       Math.pow(Math.sin(dLat / 2), 2) +
-      Math.cos(radians(p2.lat)) *
-        Math.cos(radians(p1.lat)) *
-        Math.pow(Math.sin(dLon / 2), 2);
+      Math.cos(radians(p2.lat)) * Math.cos(radians(p1.lat)) * Math.pow(Math.sin(dLon / 2), 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return EARTH_RADIUS * c;
   }
@@ -2801,9 +2775,7 @@ function distance(p1, p2) {
   const dLon = radians(p2.lon) - radians(p1.lon);
   const a =
     Math.pow(Math.sin(dLat / 2), 2) +
-    Math.cos(radians(p2.lat)) *
-      Math.cos(radians(p1.lat)) *
-      Math.pow(Math.sin(dLon / 2), 2);
+    Math.cos(radians(p2.lat)) * Math.cos(radians(p1.lat)) * Math.pow(Math.sin(dLon / 2), 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return EARTH_RADIUS * c;
 }
@@ -2971,9 +2943,7 @@ function renderPerson(person) {
 }
 
 function photoDiv(p) {
-  return ["<div>", `<p>title: ${p.title}</p>`, emitPhotoData(p), "</div>"].join(
-    "\n"
-  );
+  return ["<div>", `<p>title: ${p.title}</p>`, emitPhotoData(p), "</div>"].join("\n");
 }
 
 function emitPhotoData(aPhoto) {
