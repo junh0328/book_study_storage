@@ -770,7 +770,11 @@ export function printOwing(invoice) {
 
   // record due date
   const today = new Date();
-  invoice.dueDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30);
+  invoice.dueDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 30
+  );
 
   //print details
   console.log(`name: ${invoice.customer}`);
@@ -810,7 +814,11 @@ function calculateOutstanding(invoice) {
 
 function recordDueDate(invoice) {
   const today = new Date();
-  invoice.dueDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30);
+  invoice.dueDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 30
+  );
 }
 
 function printDetails(invoice, outstanding) {
@@ -1085,7 +1093,9 @@ export default class Book {
   }
 
   hasReservation(customer) {
-    return this.#reservations.some((reservedCustomer) => reservedCustomer.id === customer.id);
+    return this.#reservations.some(
+      (reservedCustomer) => reservedCustomer.id === customer.id
+    );
   }
 }
 ```
@@ -1122,7 +1132,9 @@ export default class Book {
   }
 
   hasReservation(customer) {
-    return this.#reservations.some((reservedCustomer) => reservedCustomer.id === customer.id);
+    return this.#reservations.some(
+      (reservedCustomer) => reservedCustomer.id === customer.id
+    );
   }
 }
 
@@ -1232,7 +1244,11 @@ const operationPlan = {
   temperatureCeiling: 53,
 };
 
-readingsOutsideRange(station, operationPlan.temperatureFloor, operationPlan.temperatureCeiling);
+readingsOutsideRange(
+  station,
+  operationPlan.temperatureFloor,
+  operationPlan.temperatureCeiling
+);
 ```
 
 </details>
@@ -1670,7 +1686,9 @@ function priceOrder(product, quantity, shippingMethod) {
 
   // 할인 가격
   const discount =
-    Math.max(quantity - product.discountThreshold, 0) * product.basePrice * product.discountRate;
+    Math.max(quantity - product.discountThreshold, 0) *
+    product.basePrice *
+    product.discountRate;
 
   // 개별 배송비
   const shippingPerCase =
@@ -1718,7 +1736,11 @@ console.log(price);
 function priceOrder(product, quantity, shippingMethod) {
   const basePrice = calculateBasePrice(product, quantity);
   const discount = calcualteDiscountedPrice(product, quantity);
-  const shippingCost = calculateShippingCost(basePrice, quantity, shippingMethod);
+  const shippingCost = calculateShippingCost(
+    basePrice,
+    quantity,
+    shippingMethod
+  );
 
   return basePrice - discount + shippingCost;
 }
@@ -1729,7 +1751,9 @@ function calculateBasePrice(product, quantity) {
 
 function calcualteDiscountedPrice(product, quantity) {
   return (
-    Math.max(quantity - product.discountThreshold, 0) * product.basePrice * product.discountRate
+    Math.max(quantity - product.discountThreshold, 0) *
+    product.basePrice *
+    product.discountRate
   );
 }
 
@@ -2703,7 +2727,9 @@ function trackSummary(points) {
     const dLon = radians(p2.lon) - radians(p1.lon);
     const a =
       Math.pow(Math.sin(dLat / 2), 2) +
-      Math.cos(radians(p2.lat)) * Math.cos(radians(p1.lat)) * Math.pow(Math.sin(dLon / 2), 2);
+      Math.cos(radians(p2.lat)) *
+        Math.cos(radians(p1.lat)) *
+        Math.pow(Math.sin(dLon / 2), 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return EARTH_RADIUS * c;
   }
@@ -2775,7 +2801,9 @@ function distance(p1, p2) {
   const dLon = radians(p2.lon) - radians(p1.lon);
   const a =
     Math.pow(Math.sin(dLat / 2), 2) +
-    Math.cos(radians(p2.lat)) * Math.cos(radians(p1.lat)) * Math.pow(Math.sin(dLon / 2), 2);
+    Math.cos(radians(p2.lat)) *
+      Math.cos(radians(p1.lat)) *
+      Math.pow(Math.sin(dLon / 2), 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return EARTH_RADIUS * c;
 }
@@ -2943,7 +2971,9 @@ function renderPerson(person) {
 }
 
 function photoDiv(p) {
-  return ["<div>", `<p>title: ${p.title}</p>`, emitPhotoData(p), "</div>"].join("\n");
+  return ["<div>", `<p>title: ${p.title}</p>`, emitPhotoData(p), "</div>"].join(
+    "\n"
+  );
 }
 
 function emitPhotoData(aPhoto) {
@@ -3405,3 +3435,5 @@ console.log(result);
 ```
 
 </details>
+
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fjunh0328&count_bg=%2388BEFF&title_bg=%23808080&icon=&icon_color=%2388BEFF&title=today&edge_flat=false)](https://hits.seeyoufarm.com)
